@@ -56,20 +56,15 @@ namespace GraveyardStorage
             if (pos == Point.Zero)
                 return false;
             
-            int chestId = GravestoneChestSystem.GetChestForGravestone(pos.X, pos.Y);
-            return chestId >= 0;
+            return GravestoneChestSystem.HasStorage(pos.X, pos.Y);
         }
 
         /// <summary>
-        /// Gets the chest ID for the currently viewed gravestone, or -1 if none.
+        /// Gets the gravestone position currently being viewed.
         /// </summary>
-        public static int GetCurrentGravestoneChestId()
+        public static Point GetCurrentGravestonePosition()
         {
-            Point pos = VanillaGravestoneGlobalTile.CurrentGravestonePosition;
-            if (pos == Point.Zero)
-                return -1;
-            
-            return GravestoneChestSystem.GetChestForGravestone(pos.X, pos.Y);
+            return VanillaGravestoneGlobalTile.CurrentGravestonePosition;
         }
     }
 }

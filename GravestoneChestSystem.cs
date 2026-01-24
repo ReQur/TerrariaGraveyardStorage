@@ -9,7 +9,7 @@ using Terraria.ModLoader.IO;
 namespace GraveyardStorage
 {
     /// <summary>
-    /// Stores slot metadata for items in a gravestone chest (for restoration).
+    /// Stores slot metadata for items in a gravestone storage (for restoration).
     /// </summary>
     public class ChestSlotData
     {
@@ -26,26 +26,58 @@ namespace GraveyardStorage
     }
 
     /// <summary>
-    /// System that tracks which vanilla gravestones have associated chests.
+    /// Custom storage for gravestone items. Not limited by vanilla chest's 40-slot limit.
+    /// Stores all player items: inventory (58), armor (20), dyes (10), misc equips (5), misc dyes (5) = ~100 slots max.
+    /// </summary>
+    public class GravestoneStorage
+    {
+        public List<Item> Items { get; private set; } = new List<Item>();
+        public List<ChestSlotData> SlotData { get; private set; } = new List<ChestSlotData>();
+        public string OwnerName { get; set; } = "";
+        public int TileX { get; set; }
+        public int TileY { get; set; }
+
+        public GravestoneStorage(int tileX, int tileY)
+        {
+            TileX = tileX;
+            TileY = tileY;
+        }
+
+        public int ItemCount => Items.Count;
+
+        public void AddItem(Item item, ChestSlotData slotData)
+        {
+            Items.Add(item.Clone());
+            SlotData.Add(slotData);
+        }
+
+        public void Clear()
+        {
+            Items.Clear();
+            SlotData.Clear();
+        }
+    }
+
+    /// <summary>
+    /// System that tracks which vanilla gravestones have associated item storage.
     /// Persists data with world save/load.
+    /// Uses custom storage instead of vanilla Chest to support all player items.
     /// </summary>
     public class GravestoneChestSystem : ModSystem
     {
-        // Dictionary mapping gravestone tile position to chest ID
+        // Dictionary mapping gravestone tile position to storage
         // Key: Point (x, y) of the top-left corner of the gravestone
-        // Value: Chest ID
-        public static Dictionary<Point, int> GravestoneChests { get; private set; } = new Dictionary<Point, int>();
-        
-        // Dictionary mapping gravestone position to slot data for each chest slot
-        // Key: Point (gravestone origin), Value: array of ChestSlotData (40 slots)
-        public static Dictionary<Point, ChestSlotData[]> GravestoneSlotData { get; private set; } = new Dictionary<Point, ChestSlotData[]>();
+        // Value: GravestoneStorage containing all items
+        public static Dictionary<Point, GravestoneStorage> GravestoneStorages { get; private set; } = new Dictionary<Point, GravestoneStorage>();
 
-        // Dictionary mapping gravestone position to owner player name
-        // Key: Point (gravestone origin), Value: Player name who died
+        // Legacy support: still keep these for compatibility during transition
+        public static Dictionary<Point, int> GravestoneChests { get; private set; } = new Dictionary<Point, int>();
+        public static Dictionary<Point, ChestSlotData[]> GravestoneSlotData { get; private set; } = new Dictionary<Point, ChestSlotData[]>();
         public static Dictionary<Point, string> GravestoneOwners { get; private set; } = new Dictionary<Point, string>();
 
         public override void OnWorldLoad()
         {
+            GravestoneStorages = new Dictionary<Point, GravestoneStorage>();
             GravestoneChests = new Dictionary<Point, int>();
             GravestoneSlotData = new Dictionary<Point, ChestSlotData[]>();
             GravestoneOwners = new Dictionary<Point, string>();
@@ -53,6 +85,7 @@ namespace GraveyardStorage
 
         public override void OnWorldUnload()
         {
+            GravestoneStorages.Clear();
             GravestoneChests.Clear();
             GravestoneSlotData.Clear();
             GravestoneOwners.Clear();
@@ -60,168 +93,133 @@ namespace GraveyardStorage
 
         public override void SaveWorldData(TagCompound tag)
         {
-            // Save gravestone-chest associations
-            var positions = new List<int>();
-            var chestIds = new List<int>();
-            var slotTypes = new List<int>();
-            var slotIndices = new List<int>();
-            var slotFavorited = new List<bool>();
-            var owners = new List<string>();
+            // Save new storage format
+            var storageList = new List<TagCompound>();
 
-            foreach (var kvp in GravestoneChests)
+            foreach (var kvp in GravestoneStorages)
             {
-                // Verify the chest still exists
-                if (kvp.Value >= 0 && kvp.Value < Main.maxChests && Main.chest[kvp.Value] != null)
+                var storage = kvp.Value;
+                if (storage.Items.Count == 0)
+                    continue;
+
+                var storageTag = new TagCompound();
+                storageTag["x"] = kvp.Key.X;
+                storageTag["y"] = kvp.Key.Y;
+                storageTag["owner"] = storage.OwnerName ?? "";
+
+                // Save items
+                var itemTags = new List<TagCompound>();
+                for (int i = 0; i < storage.Items.Count; i++)
                 {
-                    positions.Add(kvp.Key.X);
-                    positions.Add(kvp.Key.Y);
-                    chestIds.Add(kvp.Value);
+                    var item = storage.Items[i];
+                    var slotData = i < storage.SlotData.Count ? storage.SlotData[i] : null;
 
-                    // Save owner
-                    if (GravestoneOwners.TryGetValue(kvp.Key, out string owner))
+                    var itemTag = new TagCompound();
+                    itemTag["item"] = ItemIO.Save(item);
+                    if (slotData != null)
                     {
-                        owners.Add(owner);
+                        itemTag["slotType"] = (int)slotData.SlotType;
+                        itemTag["slotIndex"] = slotData.SlotIndex;
+                        itemTag["favorited"] = slotData.IsFavorited;
                     }
-                    else
-                    {
-                        owners.Add("");
-                    }
-
-                    // Save slot data for this chest
-                    if (GravestoneSlotData.TryGetValue(kvp.Key, out ChestSlotData[] slotData))
-                    {
-                        for (int i = 0; i < 40; i++)
-                        {
-                            if (slotData[i] != null)
-                            {
-                                slotTypes.Add((int)slotData[i].SlotType);
-                                slotIndices.Add(slotData[i].SlotIndex);
-                                slotFavorited.Add(slotData[i].IsFavorited);
-                            }
-                            else
-                            {
-                                slotTypes.Add(-1);
-                                slotIndices.Add(-1);
-                                slotFavorited.Add(false);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // No slot data - fill with defaults
-                        for (int i = 0; i < 40; i++)
-                        {
-                            slotTypes.Add(-1);
-                            slotIndices.Add(-1);
-                            slotFavorited.Add(false);
-                        }
-                    }
+                    itemTags.Add(itemTag);
                 }
+                storageTag["items"] = itemTags;
+                storageList.Add(storageTag);
             }
 
-            tag["gravestonePositions"] = positions;
-            tag["gravestoneChestIds"] = chestIds;
-            tag["slotTypes"] = slotTypes;
-            tag["slotIndices"] = slotIndices;
-            tag["slotFavorited"] = slotFavorited;
-            tag["gravestoneOwners"] = owners;
+            tag["gravestoneStorages"] = storageList;
         }
 
         public override void LoadWorldData(TagCompound tag)
         {
+            GravestoneStorages.Clear();
             GravestoneChests.Clear();
             GravestoneSlotData.Clear();
             GravestoneOwners.Clear();
 
-            if (tag.ContainsKey("gravestonePositions") && tag.ContainsKey("gravestoneChestIds"))
+            // Load new storage format
+            if (tag.ContainsKey("gravestoneStorages"))
             {
-                var positions = tag.GetList<int>("gravestonePositions");
-                var chestIds = tag.GetList<int>("gravestoneChestIds");
-                var slotTypes = tag.ContainsKey("slotTypes") ? tag.GetList<int>("slotTypes") : null;
-                var slotIndices = tag.ContainsKey("slotIndices") ? tag.GetList<int>("slotIndices") : null;
-                var slotFavorited = tag.ContainsKey("slotFavorited") ? tag.GetList<bool>("slotFavorited") : null;
-                var owners = tag.ContainsKey("gravestoneOwners") ? tag.GetList<string>("gravestoneOwners") : null;
-
-                for (int i = 0; i < chestIds.Count && i * 2 + 1 < positions.Count; i++)
+                var storageList = tag.GetList<TagCompound>("gravestoneStorages");
+                foreach (var storageTag in storageList)
                 {
-                    int x = positions[i * 2];
-                    int y = positions[i * 2 + 1];
-                    int chestId = chestIds[i];
+                    int x = storageTag.GetInt("x");
+                    int y = storageTag.GetInt("y");
+                    string owner = storageTag.GetString("owner");
                     Point key = new Point(x, y);
 
-                    // Verify the chest exists
-                    if (chestId >= 0 && chestId < Main.maxChests && Main.chest[chestId] != null)
+                    var storage = new GravestoneStorage(x, y);
+                    storage.OwnerName = owner;
+
+                    var itemTags = storageTag.GetList<TagCompound>("items");
+                    foreach (var itemTag in itemTags)
                     {
-                        GravestoneChests[key] = chestId;
+                        Item item = ItemIO.Load(itemTag.GetCompound("item"));
+                        int slotType = itemTag.ContainsKey("slotType") ? itemTag.GetInt("slotType") : -1;
+                        int slotIndex = itemTag.ContainsKey("slotIndex") ? itemTag.GetInt("slotIndex") : -1;
+                        bool isFavorited = itemTag.ContainsKey("favorited") && itemTag.GetBool("favorited");
 
-                        // Load owner if available
-                        if (owners != null && i < owners.Count)
-                        {
-                            GravestoneOwners[key] = owners[i];
-                        }
+                        ChestSlotData slotData = slotType >= 0 
+                            ? new ChestSlotData((SlotType)slotType, slotIndex, isFavorited) 
+                            : null;
 
-                        // Load slot data if available
-                        if (slotTypes != null && slotIndices != null)
-                        {
-                            ChestSlotData[] slotData = new ChestSlotData[40];
-                            int baseIndex = i * 40;
-                            for (int s = 0; s < 40 && baseIndex + s < slotTypes.Count; s++)
-                            {
-                                int slotType = slotTypes[baseIndex + s];
-                                int slotIndex = slotIndices[baseIndex + s];
-                                bool isFavorited = slotFavorited != null && baseIndex + s < slotFavorited.Count && slotFavorited[baseIndex + s];
-                                if (slotType >= 0)
-                                {
-                                    slotData[s] = new ChestSlotData((SlotType)slotType, slotIndex, isFavorited);
-                                }
-                            }
-                            GravestoneSlotData[key] = slotData;
-                        }
+                        storage.Items.Add(item);
+                        storage.SlotData.Add(slotData);
+                    }
+
+                    if (storage.Items.Count > 0)
+                    {
+                        GravestoneStorages[key] = storage;
                     }
                 }
             }
         }
 
         /// <summary>
-        /// Registers a gravestone position with an associated chest.
+        /// Registers a gravestone position with an associated storage.
         /// </summary>
-        public static void RegisterGravestoneChest(int tileX, int tileY, int chestId)
+        public static GravestoneStorage RegisterGravestoneStorage(int tileX, int tileY, string ownerName)
         {
             Point key = new Point(tileX, tileY);
-            GravestoneChests[key] = chestId;
+            var storage = new GravestoneStorage(tileX, tileY);
+            storage.OwnerName = ownerName;
+            GravestoneStorages[key] = storage;
+            return storage;
         }
 
         /// <summary>
-        /// Gets the chest ID for a gravestone at the given position, or -1 if none.
+        /// Gets the storage for a gravestone at the given position, or null if none.
         /// </summary>
-        public static int GetChestForGravestone(int tileX, int tileY)
+        public static GravestoneStorage GetStorageForGravestone(int tileX, int tileY)
         {
             // Find the top-left corner of the gravestone (they can be multi-tile)
             Point topLeft = FindGravestoneOrigin(tileX, tileY);
             
-            if (GravestoneChests.TryGetValue(topLeft, out int chestId))
+            if (GravestoneStorages.TryGetValue(topLeft, out GravestoneStorage storage))
             {
-                // Verify chest still exists
-                if (chestId >= 0 && chestId < Main.maxChests && Main.chest[chestId] != null)
-                {
-                    return chestId;
-                }
-                else
-                {
-                    // Chest was destroyed, remove the association
-                    GravestoneChests.Remove(topLeft);
-                }
+                return storage;
             }
 
-            return -1;
+            return null;
         }
 
         /// <summary>
-        /// Checks if a gravestone at the given position has an associated chest.
+        /// Checks if a gravestone at the given position has an associated storage with items.
+        /// </summary>
+        public static bool HasStorage(int tileX, int tileY)
+        {
+            var storage = GetStorageForGravestone(tileX, tileY);
+            return storage != null && storage.Items.Count > 0;
+        }
+
+        /// <summary>
+        /// Legacy: Checks if a gravestone at the given position has an associated chest.
+        /// Now checks for storage instead.
         /// </summary>
         public static bool HasChest(int tileX, int tileY)
         {
-            return GetChestForGravestone(tileX, tileY) >= 0;
+            return HasStorage(tileX, tileY);
         }
 
         /// <summary>
@@ -251,16 +249,16 @@ namespace GraveyardStorage
         }
 
         /// <summary>
-        /// Removes the chest association when a gravestone is destroyed.
+        /// Removes the storage when a gravestone is destroyed.
         /// Attempts to restore items to the player who destroyed it.
         /// </summary>
         public static void OnGravestoneKilled(int tileX, int tileY)
         {
             Point origin = FindGravestoneOrigin(tileX, tileY);
             
-            if (GravestoneChests.TryGetValue(origin, out int chestId))
+            if (GravestoneStorages.TryGetValue(origin, out GravestoneStorage storage))
             {
-                if (chestId >= 0 && chestId < Main.maxChests && Main.chest[chestId] != null)
+                if (storage.Items.Count > 0)
                 {
                     // Find the player who is breaking this tile
                     Player breakingPlayer = FindPlayerBreakingTile(origin);
@@ -268,18 +266,16 @@ namespace GraveyardStorage
                     if (breakingPlayer != null)
                     {
                         // Restore items to player's original slots (same as "Get Items" button)
-                        RestoreItemsToPlayerOnDestroy(breakingPlayer, chestId, origin);
+                        RestoreItemsToPlayerFromStorage(breakingPlayer, storage, origin, isDestroying: true);
                     }
                     else
                     {
                         // No player found breaking tile - drop items on the ground
-                        DropItemsFromChest(chestId, origin);
+                        DropItemsFromStorage(storage, origin);
                     }
                 }
 
-                GravestoneChests.Remove(origin);
-                GravestoneSlotData.Remove(origin);
-                GravestoneOwners.Remove(origin);
+                GravestoneStorages.Remove(origin);
             }
         }
 
@@ -326,116 +322,19 @@ namespace GraveyardStorage
         }
 
         /// <summary>
-        /// Restores items from a gravestone chest to the player when the gravestone is destroyed.
-        /// Items go to original slots if possible, then free slots, then drop on ground.
-        /// Respects the placement mode setting and ownership rules.
+        /// Drops all items from a gravestone storage on the ground.
         /// </summary>
-        private static void RestoreItemsToPlayerOnDestroy(Player player, int chestId, Point origin)
+        private static void DropItemsFromStorage(GravestoneStorage storage, Point origin)
         {
-            Chest chest = Main.chest[chestId];
-            ChestSlotData[] slotData = GetSlotData(chestId);
-
-            // Determine placement mode
-            // If player is not the owner, always use NoReplacement mode
-            bool isOwner = IsOwner(player, chestId);
-            ItemPlacementMode placementMode = isOwner 
-                ? GraveyardStorageConfig.Instance?.PlacementMode ?? ItemPlacementMode.ReplaceStarred
-                : ItemPlacementMode.NoReplacement;
-
-            List<Item> itemsToProcess = new List<Item>();
-            List<ChestSlotData> slotsToProcess = new List<ChestSlotData>();
-
-            // Collect all items from the chest
-            for (int i = 0; i < 40; i++)
+            foreach (var item in storage.Items)
             {
-                if (chest.item[i] != null && !chest.item[i].IsAir)
-                {
-                    itemsToProcess.Add(chest.item[i].Clone());
-                    slotsToProcess.Add(slotData != null && slotData[i] != null ? slotData[i] : null);
-                    chest.item[i].TurnToAir();
-                }
-            }
-
-            List<Item> remainingItems = new List<Item>();
-            List<Item> displacedItems = new List<Item>();
-
-            // First pass: try to place items in their original slots
-            for (int i = 0; i < itemsToProcess.Count; i++)
-            {
-                Item item = itemsToProcess[i];
-                ChestSlotData slot = slotsToProcess[i];
-
-                if (slot != null)
-                {
-                    // Determine if we should allow replacement for this item
-                    bool allowReplace = false;
-                    if (placementMode == ItemPlacementMode.ReplaceAll)
-                    {
-                        allowReplace = true;
-                    }
-                    else if (placementMode == ItemPlacementMode.ReplaceStarred && slot.IsFavorited)
-                    {
-                        allowReplace = true;
-                    }
-                    // NoReplacement mode: allowReplace stays false
-
-                    if (TryPlaceInOriginalSlot(player, item, slot, allowReplace, displacedItems))
-                    {
-                        continue; // Item placed successfully
-                    }
-                }
-
-                // Item couldn't be placed in original slot
-                remainingItems.Add(item);
-            }
-
-            // Add displaced items to remaining items (they need to find a new home)
-            remainingItems.AddRange(displacedItems);
-
-            // Second pass: try to place remaining items in any free slot
-            List<Item> droppedItems = new List<Item>();
-            foreach (var item in remainingItems)
-            {
-                if (!TryPlaceInFreeSlot(player, item))
-                {
-                    droppedItems.Add(item);
-                }
-            }
-
-            // Third pass: drop items that couldn't be placed
-            foreach (var item in droppedItems)
-            {
-                int itemIndex = Item.NewItem(
-                    new Terraria.DataStructures.EntitySource_TileBreak(origin.X, origin.Y),
-                    origin.X * 16, origin.Y * 16, 32, 32,
-                    item.type, item.stack,
-                    false, item.prefix);
-
-                if (Main.netMode == NetmodeID.Server && itemIndex >= 0)
-                {
-                    NetMessage.SendData(MessageID.SyncItem, -1, -1, null, itemIndex);
-                }
-            }
-
-            // Destroy the internal chest
-            Chest.DestroyChest(chest.x, chest.y);
-        }
-
-        /// <summary>
-        /// Drops all items from a gravestone chest on the ground.
-        /// </summary>
-        private static void DropItemsFromChest(int chestId, Point origin)
-        {
-            Chest chest = Main.chest[chestId];
-            for (int i = 0; i < 40; i++)
-            {
-                if (chest.item[i] != null && !chest.item[i].IsAir)
+                if (item != null && !item.IsAir)
                 {
                     int itemIndex = Item.NewItem(
                         new Terraria.DataStructures.EntitySource_TileBreak(origin.X, origin.Y),
                         origin.X * 16, origin.Y * 16, 32, 32,
-                        chest.item[i].type, chest.item[i].stack,
-                        false, chest.item[i].prefix);
+                        item.type, item.stack,
+                        false, item.prefix);
 
                     if (Main.netMode == NetmodeID.Server && itemIndex >= 0)
                     {
@@ -443,23 +342,7 @@ namespace GraveyardStorage
                     }
                 }
             }
-
-            // Destroy the chest
-            Chest.DestroyChest(chest.x, chest.y);
-        }
-
-        /// <summary>
-        /// Stores slot data for a gravestone chest.
-        /// </summary>
-        public static void StoreSlotData(Point gravestoneOrigin, List<SavedItemData> itemsWithSlots, string ownerName)
-        {
-            ChestSlotData[] slotData = new ChestSlotData[40];
-            for (int i = 0; i < itemsWithSlots.Count && i < 40; i++)
-            {
-                slotData[i] = new ChestSlotData(itemsWithSlots[i].SlotType, itemsWithSlots[i].SlotIndex, itemsWithSlots[i].IsFavorited);
-            }
-            GravestoneSlotData[gravestoneOrigin] = slotData;
-            GravestoneOwners[gravestoneOrigin] = ownerName;
+            storage.Clear();
         }
 
         /// <summary>
@@ -467,9 +350,9 @@ namespace GraveyardStorage
         /// </summary>
         public static string GetOwner(Point gravestoneOrigin)
         {
-            if (GravestoneOwners.TryGetValue(gravestoneOrigin, out string owner))
+            if (GravestoneStorages.TryGetValue(gravestoneOrigin, out GravestoneStorage storage))
             {
-                return owner;
+                return storage.OwnerName;
             }
             return null;
         }
@@ -477,87 +360,45 @@ namespace GraveyardStorage
         /// <summary>
         /// Checks if the player is the owner of the gravestone items.
         /// </summary>
-        public static bool IsOwner(Player player, int chestId)
+        public static bool IsOwnerOfStorage(Player player, GravestoneStorage storage)
         {
-            Point? origin = GetGravestoneOrigin(chestId);
-            if (!origin.HasValue)
+            if (storage == null)
                 return false;
             
-            string owner = GetOwner(origin.Value);
-            return string.IsNullOrEmpty(owner) || owner == player.name;
+            return string.IsNullOrEmpty(storage.OwnerName) || storage.OwnerName == player.name;
         }
 
         /// <summary>
-        /// Gets the slot data for a gravestone chest.
+        /// Gets the number of items stored in a gravestone storage.
         /// </summary>
-        public static ChestSlotData[] GetSlotData(int chestId)
+        public static int GetStorageItemCount(int tileX, int tileY)
         {
-            foreach (var kvp in GravestoneChests)
-            {
-                if (kvp.Value == chestId)
-                {
-                    if (GravestoneSlotData.TryGetValue(kvp.Key, out ChestSlotData[] slotData))
-                    {
-                        return slotData;
-                    }
-                    break;
-                }
-            }
-            return null;
+            var storage = GetStorageForGravestone(tileX, tileY);
+            return storage?.ItemCount ?? 0;
         }
 
         /// <summary>
-        /// Gets the gravestone origin point for a given chest ID.
-        /// </summary>
-        public static Point? GetGravestoneOrigin(int chestId)
-        {
-            foreach (var kvp in GravestoneChests)
-            {
-                if (kvp.Value == chestId)
-                {
-                    return kvp.Key;
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Gets the number of items stored in a gravestone chest.
-        /// </summary>
-        public static int GetItemCount(int chestId)
-        {
-            if (chestId < 0 || chestId >= Main.maxChests || Main.chest[chestId] == null)
-                return 0;
-
-            Chest chest = Main.chest[chestId];
-            int count = 0;
-            for (int i = 0; i < 40; i++)
-            {
-                if (chest.item[i] != null && !chest.item[i].IsAir)
-                {
-                    count++;
-                }
-            }
-            return count;
-        }
-
-        /// <summary>
-        /// Restores all items from a gravestone chest to the player's inventory.
+        /// Restores all items from a gravestone storage to the player's inventory.
         /// Items are placed in their original slots if possible, otherwise in free slots, otherwise dropped.
         /// Respects the placement mode setting and ownership rules.
         /// </summary>
-        public static void RestoreItemsToPlayer(Player player, int chestId)
+        public static void RestoreItemsFromStorage(Player player, int tileX, int tileY)
         {
-            if (chestId < 0 || chestId >= Main.maxChests || Main.chest[chestId] == null)
+            Point origin = FindGravestoneOrigin(tileX, tileY);
+            if (!GravestoneStorages.TryGetValue(origin, out GravestoneStorage storage))
                 return;
 
-            Chest chest = Main.chest[chestId];
-            ChestSlotData[] slotData = GetSlotData(chestId);
-            Point? origin = GetGravestoneOrigin(chestId);
+            RestoreItemsToPlayerFromStorage(player, storage, origin, isDestroying: false);
+        }
 
+        /// <summary>
+        /// Internal method to restore items from storage to player.
+        /// </summary>
+        private static void RestoreItemsToPlayerFromStorage(Player player, GravestoneStorage storage, Point origin, bool isDestroying)
+        {
             // Determine placement mode
             // If player is not the owner, always use NoReplacement mode
-            bool isOwner = IsOwner(player, chestId);
+            bool isOwner = IsOwnerOfStorage(player, storage);
             ItemPlacementMode placementMode = isOwner 
                 ? GraveyardStorageConfig.Instance?.PlacementMode ?? ItemPlacementMode.ReplaceStarred
                 : ItemPlacementMode.NoReplacement;
@@ -565,14 +406,14 @@ namespace GraveyardStorage
             List<Item> itemsToProcess = new List<Item>();
             List<ChestSlotData> slotsToProcess = new List<ChestSlotData>();
 
-            // Collect all items from the chest
-            for (int i = 0; i < 40; i++)
+            // Collect all items from the storage
+            for (int i = 0; i < storage.Items.Count; i++)
             {
-                if (chest.item[i] != null && !chest.item[i].IsAir)
+                var item = storage.Items[i];
+                if (item != null && !item.IsAir)
                 {
-                    itemsToProcess.Add(chest.item[i].Clone());
-                    slotsToProcess.Add(slotData != null && slotData[i] != null ? slotData[i] : null);
-                    chest.item[i].TurnToAir();
+                    itemsToProcess.Add(item.Clone());
+                    slotsToProcess.Add(i < storage.SlotData.Count ? storage.SlotData[i] : null);
                 }
             }
 
@@ -625,23 +466,32 @@ namespace GraveyardStorage
             // Third pass: drop items that couldn't be placed
             foreach (var item in droppedItems)
             {
-                Item.NewItem(
-                    player.GetSource_Misc("GraveyardStorage"),
-                    player.Center, Vector2.Zero,
-                    item.type, item.stack,
-                    false, item.prefix);
+                if (isDestroying)
+                {
+                    int itemIndex = Item.NewItem(
+                        new Terraria.DataStructures.EntitySource_TileBreak(origin.X, origin.Y),
+                        origin.X * 16, origin.Y * 16, 32, 32,
+                        item.type, item.stack,
+                        false, item.prefix);
+
+                    if (Main.netMode == NetmodeID.Server && itemIndex >= 0)
+                    {
+                        NetMessage.SendData(MessageID.SyncItem, -1, -1, null, itemIndex);
+                    }
+                }
+                else
+                {
+                    Item.NewItem(
+                        player.GetSource_Misc("GraveyardStorage"),
+                        player.Center, Vector2.Zero,
+                        item.type, item.stack,
+                        false, item.prefix);
+                }
             }
 
-            // Clean up: remove the gravestone chest association since items are now retrieved
-            if (origin.HasValue)
-            {
-                GravestoneChests.Remove(origin.Value);
-                GravestoneSlotData.Remove(origin.Value);
-                GravestoneOwners.Remove(origin.Value);
-                
-                // Destroy the internal chest (items already retrieved)
-                Chest.DestroyChest(chest.x, chest.y);
-            }
+            // Clean up: remove the gravestone storage since items are now retrieved
+            storage.Clear();
+            GravestoneStorages.Remove(origin);
         }
 
         /// <summary>

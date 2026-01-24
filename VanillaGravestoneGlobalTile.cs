@@ -25,18 +25,14 @@ namespace GraveyardStorage
 
             // Check if this gravestone has stored items
             Point origin = GravestoneChestSystem.FindGravestoneOrigin(i, j);
-            int chestId = GravestoneChestSystem.GetChestForGravestone(origin.X, origin.Y);
             
-            if (chestId >= 0)
+            if (GravestoneChestSystem.HasStorage(origin.X, origin.Y))
             {
                 // This gravestone has items - track it for UI
                 // The sign interface will open normally via vanilla
                 CurrentGravestonePosition = origin;
                 
-                // Get item count for display
-                int itemCount = GravestoneChestSystem.GetItemCount(chestId);
-                
-                // Find the sign at this position and update its text to show item info
+                // Find the sign at this position
                 int signIndex = GetSignAtPosition(origin.X, origin.Y);
                 if (signIndex >= 0)
                 {

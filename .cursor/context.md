@@ -21,10 +21,9 @@ This file provides context for AI assistants working on this tModLoader mod.
 2. **Gravestone Association** (`GraveyardStoragePlayer.PreUpdate`)
    - After respawn, waits 10 frames
    - Searches for nearest vanilla gravestone (TileID.Tombstones) near death position
-   - Creates internal storage chest (for item management)
-   - Registers in `GravestoneChestSystem.GravestoneChests` dictionary
-   - Stores slot data in `GravestoneChestSystem.GravestoneSlotData`
-   - Stores owner name in `GravestoneChestSystem.GravestoneOwners`
+   - Creates `GravestoneStorage` object (custom storage, not limited by vanilla 40-slot chest)
+   - Registers in `GravestoneChestSystem.GravestoneStorages` dictionary
+   - Stores all items with their slot data (SlotType, SlotIndex, IsFavorited)
 
 3. **Tombstone Interaction** (`VanillaGravestoneGlobalTile.RightClick`)
    - Tracks when player opens a gravestone with stored items
@@ -52,11 +51,11 @@ This file provides context for AI assistants working on this tModLoader mod.
 ### Key Technical Details
 
 - **Vanilla sign interface**: Tombstones use normal sign UI, mod adds overlay button
-- **Internal chest for storage**: Items stored in Chest object but not opened as chest UI
-- **World persistence**: `GravestoneChestSystem` implements `SaveWorldData`/`LoadWorldData`
+- **Custom storage system**: Uses `GravestoneStorage` class instead of vanilla Chest (no 40-slot limit)
+- **World persistence**: `GravestoneChestSystem` implements `SaveWorldData`/`LoadWorldData` with ItemIO
 - **Slot tracking**: `SlotType` enum (Inventory, Coins, Ammo, Armor, Dye, MiscEquip, MiscDye) + `SlotIndex` + `IsFavorited`
-- **Slot data storage**: `GravestoneSlotData` dictionary maps gravestone origin to `ChestSlotData[]`
-- **Owner tracking**: `GravestoneOwners` dictionary maps gravestone origin to player name
+- **Storage structure**: `GravestoneStorages` dictionary maps gravestone origin to `GravestoneStorage` object
+- **Owner tracking**: `GravestoneStorage.OwnerName` stores player name who died
 - **Item placement modes**: `GraveyardStorageConfig` with `ItemPlacementMode` enum (ReplaceStarred, ReplaceAll, NoReplacement)
 - **UI detection**: Tracks `CurrentGravestonePosition` when player right-clicks gravestone with items
 - **Tombstone destruction**: Items restore to breaking player (single player: LocalPlayer, server: nearest player within 10 tiles)
@@ -91,7 +90,7 @@ This file provides context for AI assistants working on this tModLoader mod.
 
 ## Important Constants
 
-- Max item slots: 40
+- Max item slots: Unlimited (stores all player items - inventory, armor, accessories, dyes, etc.)
 - Search radius for gravestone: 30 tiles
 - Transfer delay after respawn: 10 frames
 - Player difficulty: 0=Softcore, 1=Mediumcore, 2=Hardcore

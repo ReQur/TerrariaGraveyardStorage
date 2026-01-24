@@ -173,7 +173,7 @@ namespace GraveyardStorage
         }
 
         /// <summary>
-        /// Finds the nearest gravestone to death position and creates a chest for it.
+        /// Finds the nearest gravestone to death position and stores items in it.
         /// </summary>
         private void TransferItemsToNearestGravestone()
         {
@@ -195,9 +195,9 @@ namespace GraveyardStorage
                     Tile tile = Main.tile[x, y];
                     if (tile.HasTile && tile.TileType == TileID.Tombstones)
                     {
-                        // Check if this gravestone already has a chest
+                        // Check if this gravestone already has storage
                         Point origin = GravestoneChestSystem.FindGravestoneOrigin(x, y);
-                        if (!GravestoneChestSystem.HasChest(origin.X, origin.Y))
+                        if (!GravestoneChestSystem.HasStorage(origin.X, origin.Y))
                         {
                             int distance = (x - deathPosition.X) * (x - deathPosition.X) + 
                                           (y - deathPosition.Y) * (y - deathPosition.Y);
@@ -213,23 +213,17 @@ namespace GraveyardStorage
 
             if (foundGravestone.HasValue)
             {
-                // Create a chest for this gravestone
-                int chestId = CreateChestForGravestone(foundGravestone.Value.X, foundGravestone.Value.Y);
-                if (chestId >= 0)
+                // Create storage for this gravestone
+                var storage = GravestoneChestSystem.RegisterGravestoneStorage(
+                    foundGravestone.Value.X, 
+                    foundGravestone.Value.Y, 
+                    Player.name);
+
+                // Transfer all saved items to storage (no limit!)
+                foreach (var itemData in savedItemsWithSlots)
                 {
-                    TransferSavedItemsToChest(chestId);
-
-                    // Store the slot data for this chest (including owner name)
-                    GravestoneChestSystem.StoreSlotData(foundGravestone.Value, savedItemsWithSlots, Player.name);
-
-                    // Sync in multiplayer
-                    if (Main.netMode == NetmodeID.Server)
-                    {
-                        for (int slot = 0; slot < 40; slot++)
-                        {
-                            NetMessage.SendData(MessageID.SyncChestItem, -1, -1, null, chestId, slot);
-                        }
-                    }
+                    var slotData = new ChestSlotData(itemData.SlotType, itemData.SlotIndex, itemData.IsFavorited);
+                    storage.AddItem(itemData.Item, slotData);
                 }
             }
             else
@@ -239,73 +233,6 @@ namespace GraveyardStorage
             }
 
             savedItemsWithSlots.Clear();
-        }
-
-        /// <summary>
-        /// Creates a chest associated with a gravestone tile.
-        /// We manually create the chest since gravestones aren't container tiles.
-        /// </summary>
-        private int CreateChestForGravestone(int tileX, int tileY)
-        {
-            // Find an empty chest slot manually (Chest.CreateChest validates tile type which fails for gravestones)
-            int chestId = -1;
-            for (int i = 0; i < Main.maxChests; i++)
-            {
-                if (Main.chest[i] == null)
-                {
-                    chestId = i;
-                    break;
-                }
-            }
-
-            if (chestId == -1)
-                return -1;
-
-            // Create the chest manually
-            Main.chest[chestId] = new Chest();
-            Main.chest[chestId].x = tileX;
-            Main.chest[chestId].y = tileY;
-            Main.chest[chestId].name = "";
-
-            // Initialize all item slots
-            for (int i = 0; i < 40; i++)
-            {
-                Main.chest[chestId].item[i] = new Item();
-            }
-
-            GravestoneChestSystem.RegisterGravestoneChest(tileX, tileY, chestId);
-            return chestId;
-        }
-
-        /// <summary>
-        /// Transfers saved items to a chest.
-        /// </summary>
-        private void TransferSavedItemsToChest(int chestId)
-        {
-            Chest chest = Main.chest[chestId];
-            if (chest == null)
-                return;
-
-            int slot = 0;
-            foreach (var itemData in savedItemsWithSlots)
-            {
-                if (slot >= 40)
-                    break;
-
-                chest.item[slot] = itemData.Item.Clone();
-                slot++;
-            }
-
-            // If there are more items than chest slots, drop the rest
-            for (int i = slot; i < savedItemsWithSlots.Count; i++)
-            {
-                var item = savedItemsWithSlots[i].Item;
-                Item.NewItem(
-                    Player.GetSource_Death(),
-                    deathPosition.X * 16, deathPosition.Y * 16, 16, 16,
-                    item.type, item.stack,
-                    false, item.prefix);
-            }
         }
 
         /// <summary>

@@ -67,8 +67,8 @@ namespace GraveyardStorage
                 return;
 
             // Get item count
-            int chestId = GraveyardStorageSystem.GetCurrentGravestoneChestId();
-            int itemCount = GravestoneChestSystem.GetItemCount(chestId);
+            Point pos = GraveyardStorageSystem.GetCurrentGravestonePosition();
+            int itemCount = GravestoneChestSystem.GetStorageItemCount(pos.X, pos.Y);
             
             // Update item count text
             string countText = string.Format(ItemCountText?.Value ?? "Stored items: {0}", itemCount);
@@ -94,8 +94,8 @@ namespace GraveyardStorage
 
         private void OnGetItemsClicked(UIMouseEvent evt, UIElement listeningElement)
         {
-            int chestId = GraveyardStorageSystem.GetCurrentGravestoneChestId();
-            if (chestId >= 0)
+            Point pos = GraveyardStorageSystem.GetCurrentGravestonePosition();
+            if (pos != Point.Zero && GravestoneChestSystem.HasStorage(pos.X, pos.Y))
             {
                 SoundEngine.PlaySound(SoundID.Grab);
                 
@@ -106,7 +106,7 @@ namespace GraveyardStorage
                 Main.npcChatText = string.Empty;
                 
                 // Restore items
-                GravestoneChestSystem.RestoreItemsToPlayer(player, chestId);
+                GravestoneChestSystem.RestoreItemsFromStorage(player, pos.X, pos.Y);
                 
                 // Clear tracking
                 VanillaGravestoneGlobalTile.CurrentGravestoneSignWithItems = -1;
