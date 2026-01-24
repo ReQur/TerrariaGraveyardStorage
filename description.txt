@@ -1,0 +1,10 @@
+Stores your items in gravestones when you die instead of dropping them on the ground.
+
+When playing on Medium (Mediumcore) or Hardcore difficulty, dying in Terraria means your items scatter across the ground. This mod automatically stores all your items in a gravestone at your death location.
+
+Features:
+- Automatic item storage on death
+- Stores inventory, armor, accessories, coins, ammo, and equipment
+- Only works on Mediumcore and Hardcore difficulties
+- Random gravestone styles
+- Works in multiplayer

@@ -1,0 +1,22 @@
+Mods: {
+	GraveyardStorage: {
+		Common: {
+			GravestoneName: Gravestone
+			ItemsStoredMessage: Items stored: {0}
+		}
+
+		UI: {
+			GetItemsButton: Get Items
+			GetItemsHover: Restore all items to their original inventory slots
+			ItemCount: Stored items: {0}
+		}
+	}
+}
+
+UI: {
+	GetItemsButton: Get Items
+	GetItemsHover: Restore all items to their original inventory slots
+	ItemCount: Stored items: {0}
+}
+
+Common.ItemsStoredMessage: Items stored: {0}

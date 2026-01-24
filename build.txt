@@ -1,0 +1,3 @@
+displayName = Graveyard Storage
+author = Qazar
+version = 0.1
