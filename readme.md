@@ -13,8 +13,10 @@ When playing on Mediumcore or Hardcore difficulty, dying in Terraria means your 
 - **Vanilla Sign Interface**: Right-click the gravestone to open the normal tombstone interface with your items info
 - **"Get Items" Button**: One-click button in the tombstone interface to restore all items to their original inventory slots
   - Items are placed in their original positions (armor, accessories, hotbar, etc.)
-  - If a slot is occupied, items go to a free inventory slot instead
+  - Configurable item placement behavior (see Settings below)
   - If inventory is full, remaining items drop on the ground
+- **Configurable Item Placement**: Choose how items are restored to your inventory via mod settings
+- **Multiplayer Ownership**: Tombstones track who died, affecting item restoration behavior
 - **Slot Position Memory**: The mod remembers exactly where each item was (armor slots, accessory slots, inventory position, etc.)
 - **Difficulty-Aware**: Only works on Mediumcore and Hardcore difficulties
   - On Softcore/Journey mode, items don't drop anyway, so the mod doesn't interfere
@@ -37,16 +39,32 @@ The mod stores (in priority order):
 
 If you have more than 40 items when you die, excess items will drop normally on the ground.
 
+## Settings
+
+Access mod settings via: Main Menu → Workshop → Manage Mods → Graveyard Storage → Config
+
+### Item Placement Mode
+
+Controls how items are placed in your inventory when restored from a tombstone:
+
+| Mode | Description |
+|------|-------------|
+| **Replace Starred Items** (Default) | Only favorited (starred) items will replace items in their original slots. Other items go to empty slots or are dropped. |
+| **Replace All Items** | All items will try to replace items in their original slots. Displaced items are moved to empty slots or dropped. |
+| **No Replacement** | Items only go to empty slots or are dropped. No items will be displaced from their current positions. |
+
+**Note**: When another player picks up items from your tombstone (multiplayer), "No Replacement" mode is always used regardless of their settings. This prevents your death from reorganizing another player's inventory.
+
 ## How It Works
 
 1. Player dies on Mediumcore or Hardcore difficulty
-2. Mod intercepts items BEFORE they drop and saves them (including their original slot positions)
+2. Mod intercepts items BEFORE they drop and saves them (including their original slot positions and favorite status)
 3. Vanilla Terraria places a gravestone as normal
 4. After player respawns, mod finds the nearest new gravestone
-5. Stores all saved items internally linked to that gravestone
+5. Stores all saved items internally linked to that gravestone (with owner name)
 6. Player can return and right-click the gravestone to open the normal tombstone interface
 7. A "Get Items" button appears showing the number of stored items
-8. Click the button to restore all items to their original inventory positions
+8. Click the button to restore all items to their original inventory positions (respecting placement mode settings)
 
 ## Installation
 
@@ -68,9 +86,10 @@ If you have more than 40 items when you die, excess items will drop normally on 
 | File | Purpose |
 |------|---------|
 | `GraveyardStorage.cs` | Main mod class |
-| `GraveyardStoragePlayer.cs` | Handles death, saves items with slot positions, transfers to gravestones |
+| `GraveyardStorageConfig.cs` | Mod configuration settings (item placement mode) |
+| `GraveyardStoragePlayer.cs` | Handles death, saves items with slot positions and favorite status, transfers to gravestones |
 | `GraveyardStorageSystem.cs` | Read-only logic, hooks for blocking deposits |
-| `GravestoneChestSystem.cs` | Tracks gravestone-chest associations, slot data, item restoration, world save/load |
+| `GravestoneChestSystem.cs` | Tracks gravestone-chest associations, slot data, owner tracking, item restoration, world save/load |
 | `GraveyardStorageUI.cs` | "Get Items" button UI in the gravestone chest interface |
 | `VanillaGravestoneGlobalTile.cs` | Adds right-click chest functionality to vanilla gravestones |
 

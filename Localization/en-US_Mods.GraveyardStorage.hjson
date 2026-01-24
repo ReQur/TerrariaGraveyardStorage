@@ -8,3 +8,39 @@ UI: {
 	GetItemsHover: Restore all items to their original inventory slots
 	ItemCount: Stored items: {0}
 }
+
+Configs: {
+	GraveyardStorageConfig: {
+		DisplayName: Graveyard Storage Settings
+		Headers.ItemRestoration: Item Restoration Settings
+
+		PlacementMode: {
+			Label: Item Placement Mode
+			Tooltip:
+				'''
+				Controls how items are placed in your inventory when restored from a tombstone.
+				This setting only applies when you retrieve your own items.
+				When another player picks up your items, "No Replacement" is always used.
+				'''
+		}
+	}
+
+	ItemPlacementMode: {
+		Tooltip: ""
+
+		ReplaceStarred: {
+			Label: Replace Starred Items
+			Tooltip: Only favorited (starred) items will replace items in their original slots. Other items go to empty slots or are dropped.
+		}
+
+		ReplaceAll: {
+			Label: Replace All Items
+			Tooltip: All items will try to replace items in their original slots. Displaced items are moved to empty slots or dropped.
+		}
+
+		NoReplacement: {
+			Label: No Replacement
+			Tooltip: Items only go to empty slots or are dropped. No items will be displaced from their current positions.
+		}
+	}
+}

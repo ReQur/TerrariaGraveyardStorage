@@ -15,11 +15,13 @@ namespace GraveyardStorage
     {
         public SlotType SlotType { get; set; }
         public int SlotIndex { get; set; }
+        public bool IsFavorited { get; set; }
 
-        public ChestSlotData(SlotType slotType, int slotIndex)
+        public ChestSlotData(SlotType slotType, int slotIndex, bool isFavorited = false)
         {
             SlotType = slotType;
             SlotIndex = slotIndex;
+            IsFavorited = isFavorited;
         }
     }
 
@@ -38,16 +40,22 @@ namespace GraveyardStorage
         // Key: Point (gravestone origin), Value: array of ChestSlotData (40 slots)
         public static Dictionary<Point, ChestSlotData[]> GravestoneSlotData { get; private set; } = new Dictionary<Point, ChestSlotData[]>();
 
+        // Dictionary mapping gravestone position to owner player name
+        // Key: Point (gravestone origin), Value: Player name who died
+        public static Dictionary<Point, string> GravestoneOwners { get; private set; } = new Dictionary<Point, string>();
+
         public override void OnWorldLoad()
         {
             GravestoneChests = new Dictionary<Point, int>();
             GravestoneSlotData = new Dictionary<Point, ChestSlotData[]>();
+            GravestoneOwners = new Dictionary<Point, string>();
         }
 
         public override void OnWorldUnload()
         {
             GravestoneChests.Clear();
             GravestoneSlotData.Clear();
+            GravestoneOwners.Clear();
         }
 
         public override void SaveWorldData(TagCompound tag)
@@ -57,6 +65,8 @@ namespace GraveyardStorage
             var chestIds = new List<int>();
             var slotTypes = new List<int>();
             var slotIndices = new List<int>();
+            var slotFavorited = new List<bool>();
+            var owners = new List<string>();
 
             foreach (var kvp in GravestoneChests)
             {
@@ -67,6 +77,16 @@ namespace GraveyardStorage
                     positions.Add(kvp.Key.Y);
                     chestIds.Add(kvp.Value);
 
+                    // Save owner
+                    if (GravestoneOwners.TryGetValue(kvp.Key, out string owner))
+                    {
+                        owners.Add(owner);
+                    }
+                    else
+                    {
+                        owners.Add("");
+                    }
+
                     // Save slot data for this chest
                     if (GravestoneSlotData.TryGetValue(kvp.Key, out ChestSlotData[] slotData))
                     {
@@ -76,21 +96,24 @@ namespace GraveyardStorage
                             {
                                 slotTypes.Add((int)slotData[i].SlotType);
                                 slotIndices.Add(slotData[i].SlotIndex);
+                                slotFavorited.Add(slotData[i].IsFavorited);
                             }
                             else
                             {
                                 slotTypes.Add(-1);
                                 slotIndices.Add(-1);
+                                slotFavorited.Add(false);
                             }
                         }
                     }
                     else
                     {
-                        // No slot data - fill with -1
+                        // No slot data - fill with defaults
                         for (int i = 0; i < 40; i++)
                         {
                             slotTypes.Add(-1);
                             slotIndices.Add(-1);
+                            slotFavorited.Add(false);
                         }
                     }
                 }
@@ -100,12 +123,15 @@ namespace GraveyardStorage
             tag["gravestoneChestIds"] = chestIds;
             tag["slotTypes"] = slotTypes;
             tag["slotIndices"] = slotIndices;
+            tag["slotFavorited"] = slotFavorited;
+            tag["gravestoneOwners"] = owners;
         }
 
         public override void LoadWorldData(TagCompound tag)
         {
             GravestoneChests.Clear();
             GravestoneSlotData.Clear();
+            GravestoneOwners.Clear();
 
             if (tag.ContainsKey("gravestonePositions") && tag.ContainsKey("gravestoneChestIds"))
             {
@@ -113,6 +139,8 @@ namespace GraveyardStorage
                 var chestIds = tag.GetList<int>("gravestoneChestIds");
                 var slotTypes = tag.ContainsKey("slotTypes") ? tag.GetList<int>("slotTypes") : null;
                 var slotIndices = tag.ContainsKey("slotIndices") ? tag.GetList<int>("slotIndices") : null;
+                var slotFavorited = tag.ContainsKey("slotFavorited") ? tag.GetList<bool>("slotFavorited") : null;
+                var owners = tag.ContainsKey("gravestoneOwners") ? tag.GetList<string>("gravestoneOwners") : null;
 
                 for (int i = 0; i < chestIds.Count && i * 2 + 1 < positions.Count; i++)
                 {
@@ -126,6 +154,12 @@ namespace GraveyardStorage
                     {
                         GravestoneChests[key] = chestId;
 
+                        // Load owner if available
+                        if (owners != null && i < owners.Count)
+                        {
+                            GravestoneOwners[key] = owners[i];
+                        }
+
                         // Load slot data if available
                         if (slotTypes != null && slotIndices != null)
                         {
@@ -135,9 +169,10 @@ namespace GraveyardStorage
                             {
                                 int slotType = slotTypes[baseIndex + s];
                                 int slotIndex = slotIndices[baseIndex + s];
+                                bool isFavorited = slotFavorited != null && baseIndex + s < slotFavorited.Count && slotFavorited[baseIndex + s];
                                 if (slotType >= 0)
                                 {
-                                    slotData[s] = new ChestSlotData((SlotType)slotType, slotIndex);
+                                    slotData[s] = new ChestSlotData((SlotType)slotType, slotIndex, isFavorited);
                                 }
                             }
                             GravestoneSlotData[key] = slotData;
@@ -244,6 +279,7 @@ namespace GraveyardStorage
 
                 GravestoneChests.Remove(origin);
                 GravestoneSlotData.Remove(origin);
+                GravestoneOwners.Remove(origin);
             }
         }
 
@@ -292,11 +328,19 @@ namespace GraveyardStorage
         /// <summary>
         /// Restores items from a gravestone chest to the player when the gravestone is destroyed.
         /// Items go to original slots if possible, then free slots, then drop on ground.
+        /// Respects the placement mode setting and ownership rules.
         /// </summary>
         private static void RestoreItemsToPlayerOnDestroy(Player player, int chestId, Point origin)
         {
             Chest chest = Main.chest[chestId];
             ChestSlotData[] slotData = GetSlotData(chestId);
+
+            // Determine placement mode
+            // If player is not the owner, always use NoReplacement mode
+            bool isOwner = IsOwner(player, chestId);
+            ItemPlacementMode placementMode = isOwner 
+                ? GraveyardStorageConfig.Instance?.PlacementMode ?? ItemPlacementMode.ReplaceStarred
+                : ItemPlacementMode.NoReplacement;
 
             List<Item> itemsToProcess = new List<Item>();
             List<ChestSlotData> slotsToProcess = new List<ChestSlotData>();
@@ -313,6 +357,7 @@ namespace GraveyardStorage
             }
 
             List<Item> remainingItems = new List<Item>();
+            List<Item> displacedItems = new List<Item>();
 
             // First pass: try to place items in their original slots
             for (int i = 0; i < itemsToProcess.Count; i++)
@@ -320,14 +365,32 @@ namespace GraveyardStorage
                 Item item = itemsToProcess[i];
                 ChestSlotData slot = slotsToProcess[i];
 
-                if (slot != null && TryPlaceInOriginalSlot(player, item, slot))
+                if (slot != null)
                 {
-                    continue; // Item placed successfully
+                    // Determine if we should allow replacement for this item
+                    bool allowReplace = false;
+                    if (placementMode == ItemPlacementMode.ReplaceAll)
+                    {
+                        allowReplace = true;
+                    }
+                    else if (placementMode == ItemPlacementMode.ReplaceStarred && slot.IsFavorited)
+                    {
+                        allowReplace = true;
+                    }
+                    // NoReplacement mode: allowReplace stays false
+
+                    if (TryPlaceInOriginalSlot(player, item, slot, allowReplace, displacedItems))
+                    {
+                        continue; // Item placed successfully
+                    }
                 }
 
                 // Item couldn't be placed in original slot
                 remainingItems.Add(item);
             }
+
+            // Add displaced items to remaining items (they need to find a new home)
+            remainingItems.AddRange(displacedItems);
 
             // Second pass: try to place remaining items in any free slot
             List<Item> droppedItems = new List<Item>();
@@ -388,14 +451,40 @@ namespace GraveyardStorage
         /// <summary>
         /// Stores slot data for a gravestone chest.
         /// </summary>
-        public static void StoreSlotData(Point gravestoneOrigin, List<SavedItemData> itemsWithSlots)
+        public static void StoreSlotData(Point gravestoneOrigin, List<SavedItemData> itemsWithSlots, string ownerName)
         {
             ChestSlotData[] slotData = new ChestSlotData[40];
             for (int i = 0; i < itemsWithSlots.Count && i < 40; i++)
             {
-                slotData[i] = new ChestSlotData(itemsWithSlots[i].SlotType, itemsWithSlots[i].SlotIndex);
+                slotData[i] = new ChestSlotData(itemsWithSlots[i].SlotType, itemsWithSlots[i].SlotIndex, itemsWithSlots[i].IsFavorited);
             }
             GravestoneSlotData[gravestoneOrigin] = slotData;
+            GravestoneOwners[gravestoneOrigin] = ownerName;
+        }
+
+        /// <summary>
+        /// Gets the owner name for a gravestone.
+        /// </summary>
+        public static string GetOwner(Point gravestoneOrigin)
+        {
+            if (GravestoneOwners.TryGetValue(gravestoneOrigin, out string owner))
+            {
+                return owner;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Checks if the player is the owner of the gravestone items.
+        /// </summary>
+        public static bool IsOwner(Player player, int chestId)
+        {
+            Point? origin = GetGravestoneOrigin(chestId);
+            if (!origin.HasValue)
+                return false;
+            
+            string owner = GetOwner(origin.Value);
+            return string.IsNullOrEmpty(owner) || owner == player.name;
         }
 
         /// <summary>
@@ -455,6 +544,7 @@ namespace GraveyardStorage
         /// <summary>
         /// Restores all items from a gravestone chest to the player's inventory.
         /// Items are placed in their original slots if possible, otherwise in free slots, otherwise dropped.
+        /// Respects the placement mode setting and ownership rules.
         /// </summary>
         public static void RestoreItemsToPlayer(Player player, int chestId)
         {
@@ -464,6 +554,13 @@ namespace GraveyardStorage
             Chest chest = Main.chest[chestId];
             ChestSlotData[] slotData = GetSlotData(chestId);
             Point? origin = GetGravestoneOrigin(chestId);
+
+            // Determine placement mode
+            // If player is not the owner, always use NoReplacement mode
+            bool isOwner = IsOwner(player, chestId);
+            ItemPlacementMode placementMode = isOwner 
+                ? GraveyardStorageConfig.Instance?.PlacementMode ?? ItemPlacementMode.ReplaceStarred
+                : ItemPlacementMode.NoReplacement;
 
             List<Item> itemsToProcess = new List<Item>();
             List<ChestSlotData> slotsToProcess = new List<ChestSlotData>();
@@ -480,6 +577,7 @@ namespace GraveyardStorage
             }
 
             List<Item> remainingItems = new List<Item>();
+            List<Item> displacedItems = new List<Item>();
 
             // First pass: try to place items in their original slots
             for (int i = 0; i < itemsToProcess.Count; i++)
@@ -487,14 +585,32 @@ namespace GraveyardStorage
                 Item item = itemsToProcess[i];
                 ChestSlotData slot = slotsToProcess[i];
 
-                if (slot != null && TryPlaceInOriginalSlot(player, item, slot))
+                if (slot != null)
                 {
-                    continue; // Item placed successfully
+                    // Determine if we should allow replacement for this item
+                    bool allowReplace = false;
+                    if (placementMode == ItemPlacementMode.ReplaceAll)
+                    {
+                        allowReplace = true;
+                    }
+                    else if (placementMode == ItemPlacementMode.ReplaceStarred && slot.IsFavorited)
+                    {
+                        allowReplace = true;
+                    }
+                    // NoReplacement mode: allowReplace stays false
+
+                    if (TryPlaceInOriginalSlot(player, item, slot, allowReplace, displacedItems))
+                    {
+                        continue; // Item placed successfully
+                    }
                 }
 
                 // Item couldn't be placed in original slot
                 remainingItems.Add(item);
             }
+
+            // Add displaced items to remaining items (they need to find a new home)
+            remainingItems.AddRange(displacedItems);
 
             // Second pass: try to place remaining items in any free slot
             List<Item> droppedItems = new List<Item>();
@@ -521,6 +637,7 @@ namespace GraveyardStorage
             {
                 GravestoneChests.Remove(origin.Value);
                 GravestoneSlotData.Remove(origin.Value);
+                GravestoneOwners.Remove(origin.Value);
                 
                 // Destroy the internal chest (items already retrieved)
                 Chest.DestroyChest(chest.x, chest.y);
@@ -529,8 +646,14 @@ namespace GraveyardStorage
 
         /// <summary>
         /// Tries to place an item in its original slot.
+        /// If allowReplace is true and the slot is occupied, moves the existing item to a free slot.
         /// </summary>
-        private static bool TryPlaceInOriginalSlot(Player player, Item item, ChestSlotData slot)
+        /// <param name="player">The player to place the item into</param>
+        /// <param name="item">The item to place</param>
+        /// <param name="slot">The original slot data</param>
+        /// <param name="allowReplace">Whether to replace items in occupied slots</param>
+        /// <param name="displacedItems">List to collect items that were displaced</param>
+        private static bool TryPlaceInOriginalSlot(Player player, Item item, ChestSlotData slot, bool allowReplace, List<Item> displacedItems)
         {
             Item[] targetArray = null;
             int targetIndex = slot.SlotIndex;
@@ -575,6 +698,16 @@ namespace GraveyardStorage
             // Check if the slot is empty
             if (targetArray[targetIndex].IsAir)
             {
+                targetArray[targetIndex] = item.Clone();
+                return true;
+            }
+
+            // Slot is occupied - check if we should replace
+            if (allowReplace)
+            {
+                // Save the existing item to be placed elsewhere
+                displacedItems.Add(targetArray[targetIndex].Clone());
+                // Place our item in the original slot
                 targetArray[targetIndex] = item.Clone();
                 return true;
             }

@@ -6,7 +6,7 @@ This file provides context for AI assistants working on this tModLoader mod.
 
 **Purpose**: Store player items in vanilla gravestones when dying on Mediumcore/Hardcore, with read-only access (can take items, cannot deposit). Includes a "Get Items" button to restore items to their original inventory slots.
 
-**Status**: Working implementation with slot position restoration feature and automatic restoration on tombstone destruction.
+**Status**: Working implementation with slot position restoration, configurable item placement modes, and owner tracking for multiplayer.
 
 ## Architecture
 
@@ -14,7 +14,7 @@ This file provides context for AI assistants working on this tModLoader mod.
 
 1. **Death Detection** (`GraveyardStoragePlayer.PreKill`)
    - Intercepts death BEFORE items drop
-   - Saves all items to `savedItemsWithSlots` list (with `SlotType` and `SlotIndex`)
+   - Saves all items to `savedItemsWithSlots` list (with `SlotType`, `SlotIndex`, and `IsFavorited`)
    - Clears player inventory with `TurnToAir()`
    - Sets `pendingItemTransfer = true`
 
@@ -24,6 +24,7 @@ This file provides context for AI assistants working on this tModLoader mod.
    - Creates internal storage chest (for item management)
    - Registers in `GravestoneChestSystem.GravestoneChests` dictionary
    - Stores slot data in `GravestoneChestSystem.GravestoneSlotData`
+   - Stores owner name in `GravestoneChestSystem.GravestoneOwners`
 
 3. **Tombstone Interaction** (`VanillaGravestoneGlobalTile.RightClick`)
    - Tracks when player opens a gravestone with stored items
@@ -36,8 +37,11 @@ This file provides context for AI assistants working on this tModLoader mod.
    - Positioned relative to screen center (where sign UI appears)
 
 5. **Item Restoration** (`GravestoneChestSystem.RestoreItemsToPlayer`)
-   - On button click, restores items to original slots (if empty), then free slots, then drops
-   - Cleans up internal storage and gravestone association after restoration
+   - On button click, restores items based on placement mode setting
+   - **ReplaceStarred** (default): Only favorited items replace occupied slots, others go to free slots
+   - **ReplaceAll**: All items can replace occupied slots (displaced items go to free slots)
+   - **NoReplacement**: Items only go to empty slots (used when another player retrieves items)
+   - Cleans up internal storage, slot data, and owner after restoration
 
 6. **Tombstone Destruction** (`GravestoneChestSystem.OnGravestoneKilled`)
    - When tombstone is destroyed, finds the player who broke it
@@ -50,18 +54,22 @@ This file provides context for AI assistants working on this tModLoader mod.
 - **Vanilla sign interface**: Tombstones use normal sign UI, mod adds overlay button
 - **Internal chest for storage**: Items stored in Chest object but not opened as chest UI
 - **World persistence**: `GravestoneChestSystem` implements `SaveWorldData`/`LoadWorldData`
-- **Slot tracking**: `SlotType` enum (Inventory, Coins, Ammo, Armor, Dye, MiscEquip, MiscDye) + `SlotIndex`
+- **Slot tracking**: `SlotType` enum (Inventory, Coins, Ammo, Armor, Dye, MiscEquip, MiscDye) + `SlotIndex` + `IsFavorited`
 - **Slot data storage**: `GravestoneSlotData` dictionary maps gravestone origin to `ChestSlotData[]`
+- **Owner tracking**: `GravestoneOwners` dictionary maps gravestone origin to player name
+- **Item placement modes**: `GraveyardStorageConfig` with `ItemPlacementMode` enum (ReplaceStarred, ReplaceAll, NoReplacement)
 - **UI detection**: Tracks `CurrentGravestonePosition` when player right-clicks gravestone with items
 - **Tombstone destruction**: Items restore to breaking player (single player: LocalPlayer, server: nearest player within 10 tiles)
+- **Multiplayer ownership**: Non-owners always use NoReplacement mode to avoid disrupting their inventory
 
 ## File Responsibilities
 
 | File | Key Methods | Purpose |
 |------|-------------|---------|
-| `GraveyardStoragePlayer.cs` | `PreKill`, `PreUpdate`, `SavePlayerItems`, `TransferItemsToNearestGravestone` | Death handling, item saving with slot positions |
+| `GraveyardStorageConfig.cs` | `PlacementMode` property | Mod configuration (ItemPlacementMode enum) |
+| `GraveyardStoragePlayer.cs` | `PreKill`, `PreUpdate`, `SavePlayerItems`, `TransferItemsToNearestGravestone` | Death handling, item saving with slot positions and favorite status |
 | `GraveyardStorageSystem.cs` | `IsViewingGravestoneWithItems`, `GetCurrentGravestoneChestId` | Tracks when player views gravestone with items |
-| `GravestoneChestSystem.cs` | `RegisterGravestoneChest`, `GetChestForGravestone`, `StoreSlotData`, `RestoreItemsToPlayer`, `OnGravestoneKilled`, `FindPlayerBreakingTile`, `SaveWorldData` | Item storage, slot data, item restoration, tombstone destruction handling, persistence |
+| `GravestoneChestSystem.cs` | `RegisterGravestoneChest`, `GetChestForGravestone`, `StoreSlotData`, `RestoreItemsToPlayer`, `IsOwner`, `OnGravestoneKilled`, `SaveWorldData` | Item storage, slot data, owner tracking, item restoration with placement modes, persistence |
 | `GraveyardStorageUI.cs` | `OnGetItemsClicked`, `Update`, `ModifyInterfaceLayers` | "Get Items" button overlay on sign interface |
 | `VanillaGravestoneGlobalTile.cs` | `RightClick`, `KillTile` | Tracks gravestone interaction, handles gravestone destruction |
 

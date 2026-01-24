@@ -29,12 +29,14 @@ namespace GraveyardStorage
         public Item Item { get; set; }
         public SlotType SlotType { get; set; }
         public int SlotIndex { get; set; }
+        public bool IsFavorited { get; set; }
 
-        public SavedItemData(Item item, SlotType slotType, int slotIndex)
+        public SavedItemData(Item item, SlotType slotType, int slotIndex, bool isFavorited = false)
         {
             Item = item;
             SlotType = slotType;
             SlotIndex = slotIndex;
+            IsFavorited = isFavorited;
         }
     }
 
@@ -104,7 +106,7 @@ namespace GraveyardStorage
             {
                 if (!Player.armor[i].IsAir)
                 {
-                    savedItemsWithSlots.Add(new SavedItemData(Player.armor[i].Clone(), SlotType.Armor, i));
+                    savedItemsWithSlots.Add(new SavedItemData(Player.armor[i].Clone(), SlotType.Armor, i, Player.armor[i].favorited));
                     Player.armor[i].TurnToAir();
                 }
             }
@@ -114,7 +116,7 @@ namespace GraveyardStorage
             {
                 if (!Player.dye[i].IsAir)
                 {
-                    savedItemsWithSlots.Add(new SavedItemData(Player.dye[i].Clone(), SlotType.Dye, i));
+                    savedItemsWithSlots.Add(new SavedItemData(Player.dye[i].Clone(), SlotType.Dye, i, Player.dye[i].favorited));
                     Player.dye[i].TurnToAir();
                 }
             }
@@ -124,7 +126,7 @@ namespace GraveyardStorage
             {
                 if (!Player.inventory[i].IsAir)
                 {
-                    savedItemsWithSlots.Add(new SavedItemData(Player.inventory[i].Clone(), SlotType.Inventory, i));
+                    savedItemsWithSlots.Add(new SavedItemData(Player.inventory[i].Clone(), SlotType.Inventory, i, Player.inventory[i].favorited));
                     Player.inventory[i].TurnToAir();
                 }
             }
@@ -134,7 +136,7 @@ namespace GraveyardStorage
             {
                 if (!Player.inventory[i].IsAir)
                 {
-                    savedItemsWithSlots.Add(new SavedItemData(Player.inventory[i].Clone(), SlotType.Coins, i - 50));
+                    savedItemsWithSlots.Add(new SavedItemData(Player.inventory[i].Clone(), SlotType.Coins, i - 50, Player.inventory[i].favorited));
                     Player.inventory[i].TurnToAir();
                 }
             }
@@ -144,7 +146,7 @@ namespace GraveyardStorage
             {
                 if (!Player.inventory[i].IsAir)
                 {
-                    savedItemsWithSlots.Add(new SavedItemData(Player.inventory[i].Clone(), SlotType.Ammo, i - 54));
+                    savedItemsWithSlots.Add(new SavedItemData(Player.inventory[i].Clone(), SlotType.Ammo, i - 54, Player.inventory[i].favorited));
                     Player.inventory[i].TurnToAir();
                 }
             }
@@ -154,7 +156,7 @@ namespace GraveyardStorage
             {
                 if (!Player.miscEquips[i].IsAir)
                 {
-                    savedItemsWithSlots.Add(new SavedItemData(Player.miscEquips[i].Clone(), SlotType.MiscEquip, i));
+                    savedItemsWithSlots.Add(new SavedItemData(Player.miscEquips[i].Clone(), SlotType.MiscEquip, i, Player.miscEquips[i].favorited));
                     Player.miscEquips[i].TurnToAir();
                 }
             }
@@ -164,7 +166,7 @@ namespace GraveyardStorage
             {
                 if (!Player.miscDyes[i].IsAir)
                 {
-                    savedItemsWithSlots.Add(new SavedItemData(Player.miscDyes[i].Clone(), SlotType.MiscDye, i));
+                    savedItemsWithSlots.Add(new SavedItemData(Player.miscDyes[i].Clone(), SlotType.MiscDye, i, Player.miscDyes[i].favorited));
                     Player.miscDyes[i].TurnToAir();
                 }
             }
@@ -217,8 +219,8 @@ namespace GraveyardStorage
                 {
                     TransferSavedItemsToChest(chestId);
 
-                    // Store the slot data for this chest
-                    GravestoneChestSystem.StoreSlotData(foundGravestone.Value, savedItemsWithSlots);
+                    // Store the slot data for this chest (including owner name)
+                    GravestoneChestSystem.StoreSlotData(foundGravestone.Value, savedItemsWithSlots, Player.name);
 
                     // Sync in multiplayer
                     if (Main.netMode == NetmodeID.Server)
