@@ -217,6 +217,7 @@ namespace GraveyardStorage
 
         /// <summary>
         /// Removes the chest association when a gravestone is destroyed.
+        /// Attempts to restore items to the player who destroyed it.
         /// </summary>
         public static void OnGravestoneKilled(int tileX, int tileY)
         {
@@ -224,34 +225,164 @@ namespace GraveyardStorage
             
             if (GravestoneChests.TryGetValue(origin, out int chestId))
             {
-                // Drop items from the chest
                 if (chestId >= 0 && chestId < Main.maxChests && Main.chest[chestId] != null)
                 {
-                    Chest chest = Main.chest[chestId];
-                    for (int i = 0; i < 40; i++)
+                    // Find the player who is breaking this tile
+                    Player breakingPlayer = FindPlayerBreakingTile(origin);
+                    
+                    if (breakingPlayer != null)
                     {
-                        if (chest.item[i] != null && !chest.item[i].IsAir)
-                        {
-                            int itemIndex = Item.NewItem(
-                                new Terraria.DataStructures.EntitySource_TileBreak(origin.X, origin.Y),
-                                origin.X * 16, origin.Y * 16, 32, 32,
-                                chest.item[i].type, chest.item[i].stack,
-                                false, chest.item[i].prefix);
-                            
-                            if (Main.netMode == NetmodeID.Server && itemIndex >= 0)
-                            {
-                                NetMessage.SendData(MessageID.SyncItem, -1, -1, null, itemIndex);
-                            }
-                        }
+                        // Restore items to player's original slots (same as "Get Items" button)
+                        RestoreItemsToPlayerOnDestroy(breakingPlayer, chestId, origin);
                     }
-
-                    // Destroy the chest
-                    Chest.DestroyChest(chest.x, chest.y);
+                    else
+                    {
+                        // No player found breaking tile - drop items on the ground
+                        DropItemsFromChest(chestId, origin);
+                    }
                 }
 
                 GravestoneChests.Remove(origin);
                 GravestoneSlotData.Remove(origin);
             }
+        }
+
+        /// <summary>
+        /// Finds the player who is currently breaking the gravestone.
+        /// </summary>
+        private static Player FindPlayerBreakingTile(Point gravestoneOrigin)
+        {
+            // In single player, the local player is always the one breaking tiles
+            if (Main.netMode == NetmodeID.SinglePlayer)
+            {
+                return Main.LocalPlayer;
+            }
+            
+            // On server, find the player closest to the tile within mining range
+            if (Main.netMode == NetmodeID.Server)
+            {
+                Player closestPlayer = null;
+                float closestDistSq = float.MaxValue;
+                
+                for (int i = 0; i < Main.maxPlayers; i++)
+                {
+                    Player player = Main.player[i];
+                    if (player == null || !player.active)
+                        continue;
+
+                    float dx = player.Center.X - (gravestoneOrigin.X * 16 + 16);
+                    float dy = player.Center.Y - (gravestoneOrigin.Y * 16 + 16);
+                    float distanceSq = dx * dx + dy * dy;
+                    
+                    // Player mining range is about 5-6 tiles (80-96 pixels), use generous range of 10 tiles
+                    if (distanceSq < 160 * 160 && distanceSq < closestDistSq)
+                    {
+                        closestDistSq = distanceSq;
+                        closestPlayer = player;
+                    }
+                }
+                
+                return closestPlayer;
+            }
+
+            // On client, local player is breaking the tile
+            return Main.LocalPlayer;
+        }
+
+        /// <summary>
+        /// Restores items from a gravestone chest to the player when the gravestone is destroyed.
+        /// Items go to original slots if possible, then free slots, then drop on ground.
+        /// </summary>
+        private static void RestoreItemsToPlayerOnDestroy(Player player, int chestId, Point origin)
+        {
+            Chest chest = Main.chest[chestId];
+            ChestSlotData[] slotData = GetSlotData(chestId);
+
+            List<Item> itemsToProcess = new List<Item>();
+            List<ChestSlotData> slotsToProcess = new List<ChestSlotData>();
+
+            // Collect all items from the chest
+            for (int i = 0; i < 40; i++)
+            {
+                if (chest.item[i] != null && !chest.item[i].IsAir)
+                {
+                    itemsToProcess.Add(chest.item[i].Clone());
+                    slotsToProcess.Add(slotData != null && slotData[i] != null ? slotData[i] : null);
+                    chest.item[i].TurnToAir();
+                }
+            }
+
+            List<Item> remainingItems = new List<Item>();
+
+            // First pass: try to place items in their original slots
+            for (int i = 0; i < itemsToProcess.Count; i++)
+            {
+                Item item = itemsToProcess[i];
+                ChestSlotData slot = slotsToProcess[i];
+
+                if (slot != null && TryPlaceInOriginalSlot(player, item, slot))
+                {
+                    continue; // Item placed successfully
+                }
+
+                // Item couldn't be placed in original slot
+                remainingItems.Add(item);
+            }
+
+            // Second pass: try to place remaining items in any free slot
+            List<Item> droppedItems = new List<Item>();
+            foreach (var item in remainingItems)
+            {
+                if (!TryPlaceInFreeSlot(player, item))
+                {
+                    droppedItems.Add(item);
+                }
+            }
+
+            // Third pass: drop items that couldn't be placed
+            foreach (var item in droppedItems)
+            {
+                int itemIndex = Item.NewItem(
+                    new Terraria.DataStructures.EntitySource_TileBreak(origin.X, origin.Y),
+                    origin.X * 16, origin.Y * 16, 32, 32,
+                    item.type, item.stack,
+                    false, item.prefix);
+
+                if (Main.netMode == NetmodeID.Server && itemIndex >= 0)
+                {
+                    NetMessage.SendData(MessageID.SyncItem, -1, -1, null, itemIndex);
+                }
+            }
+
+            // Destroy the internal chest
+            Chest.DestroyChest(chest.x, chest.y);
+        }
+
+        /// <summary>
+        /// Drops all items from a gravestone chest on the ground.
+        /// </summary>
+        private static void DropItemsFromChest(int chestId, Point origin)
+        {
+            Chest chest = Main.chest[chestId];
+            for (int i = 0; i < 40; i++)
+            {
+                if (chest.item[i] != null && !chest.item[i].IsAir)
+                {
+                    int itemIndex = Item.NewItem(
+                        new Terraria.DataStructures.EntitySource_TileBreak(origin.X, origin.Y),
+                        origin.X * 16, origin.Y * 16, 32, 32,
+                        chest.item[i].type, chest.item[i].stack,
+                        false, chest.item[i].prefix);
+
+                    if (Main.netMode == NetmodeID.Server && itemIndex >= 0)
+                    {
+                        NetMessage.SendData(MessageID.SyncItem, -1, -1, null, itemIndex);
+                    }
+                }
+            }
+
+            // Destroy the chest
+            Chest.DestroyChest(chest.x, chest.y);
         }
 
         /// <summary>

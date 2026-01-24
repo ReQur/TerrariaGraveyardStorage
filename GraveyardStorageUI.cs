@@ -73,6 +73,9 @@ namespace GraveyardStorage
             // Update item count text
             string countText = string.Format(ItemCountText?.Value ?? "Stored items: {0}", itemCount);
             itemCountText.SetText(countText);
+            
+            // Update button text (in case localization wasn't ready at init)
+            buttonText.SetText(GetItemsButtonText?.Value ?? "Get Items");
 
             // Position elements relative to sign interface
             // The sign interface is typically centered on screen

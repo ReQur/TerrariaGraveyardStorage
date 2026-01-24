@@ -81,3 +81,6 @@ $RECYCLE.BIN/
 
 # Logs
 *.log
+
+# Cursor skills (project-specific user preferences)
+.cursor/skills/
