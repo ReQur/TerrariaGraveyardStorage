@@ -1,1 +1,34 @@
-This description will show up on the steam page, check out https://steamcommunity.com/comment/Guide/formattinghelp.
+﻿Stores your items in gravestones when you die instead of dropping them on the ground.
+
+When playing on Mediumcore or Hardcore difficulty, dying in Terraria means your items scatter across the ground, making recovery difficult and sometimes impossible. This mod solves that problem by automatically storing all your items in the vanilla gravestone that spawns at your death location.
+
+[c/FFFF00:Features:]
+- Automatic Item Storage: All items stored in the vanilla gravestone on death
+- Uses Vanilla Gravestones: No custom tiles - works with standard Terraria tombstones
+- Vanilla Sign Interface: Right-click the gravestone to open the tombstone interface
+- "Get Items" Button: One-click restore all items to their original inventory slots
+- Slot Position Memory: Remembers exactly where each item was (armor, accessories, hotbar, etc.)
+- Configurable Item Placement: Choose how items are restored via mod settings
+- Multiplayer Ownership: Tombstones track who died, preventing inventory reorganization for other players
+- Stores All Items: Every item from your inventory is saved
+- Secure Storage: Items safely stored until you retrieve them
+- World Save Support: Gravestone contents persist when saving/loading the world
+
+[c/FFFF00:What Gets Stored (in priority order):]
+- Armor (head, body, legs)
+- Accessories
+- Vanity armor and accessories
+- Dyes
+- Main inventory items (slots 0-49)
+- Coins and Ammunition
+- Misc equipment (hook, mount, pet, light pet, minecart)
+- Misc dyes
+
+[c/FFFF00:Item Placement Modes (configurable):]
+- Replace Starred Items (Default): Only favorited items replace items in original slots
+- Replace All Items: All items try to replace items in original slots
+- No Replacement: Items only go to empty slots or are dropped
+
+[c/FFFF00:Note:] This mod only works on Mediumcore and Hardcore difficulties. On Softcore/Journey mode, items don't drop anyway, so the mod doesn't interfere.
+
+[c/00FFFF:GitHub:] https://github.com/ReQur/TerrariaGraveyardStorage/
