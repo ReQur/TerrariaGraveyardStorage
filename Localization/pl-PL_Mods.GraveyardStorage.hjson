@@ -1,0 +1,46 @@
+Common: {
+	GravestoneName: Nagrobek
+	ItemsStoredMessage: Przechowywane przedmioty: {0}
+}
+
+UI: {
+	GetItemsButton: Zabierz przedmioty
+	GetItemsHover: Przywróć wszystkie przedmioty do ich oryginalnych miejsc w ekwipunku
+	ItemCount: Przechowywane przedmioty: {0}
+}
+
+Configs: {
+	GraveyardStorageConfig: {
+		DisplayName: Ustawienia Graveyard Storage
+		Headers.ItemRestoration: Ustawienia przywracania przedmiotów
+
+		PlacementMode: {
+			Label: Tryb umieszczania przedmiotów
+			Tooltip:
+				'''
+				Kontroluje sposób umieszczania przedmiotów w ekwipunku podczas przywracania z nagrobka.
+				To ustawienie dotyczy tylko sytuacji, gdy odbierasz własne przedmioty.
+				Gdy inny gracz zabiera twoje przedmioty, zawsze używany jest tryb "Bez zamiany".
+				'''
+		}
+	}
+
+	ItemPlacementMode: {
+		Tooltip: ""
+
+		ReplaceStarred: {
+			Label: Zamień ulubione przedmioty
+			Tooltip: Tylko ulubione (oznaczone gwiazdką) przedmioty zastąpią przedmioty w ich oryginalnych miejscach. Inne przedmioty trafiają do pustych miejsc lub są upuszczane.
+		}
+
+		ReplaceAll: {
+			Label: Zamień wszystkie przedmioty
+			Tooltip: Wszystkie przedmioty będą próbowały zastąpić przedmioty w ich oryginalnych miejscach. Wyparte przedmioty są przenoszone do pustych miejsc lub upuszczane.
+		}
+
+		NoReplacement: {
+			Label: Bez zamiany
+			Tooltip: Przedmioty trafiają tylko do pustych miejsc lub są upuszczane. Żadne przedmioty nie zostaną wyparte z ich obecnych pozycji.
+		}
+	}
+}

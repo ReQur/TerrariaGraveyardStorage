@@ -1,0 +1,46 @@
+Common: {
+	GravestoneName: Grabstein
+	ItemsStoredMessage: Gespeicherte Gegenstände: {0}
+}
+
+UI: {
+	GetItemsButton: Gegenstände holen
+	GetItemsHover: Alle Gegenstände an ihre ursprünglichen Inventarplätze zurückgeben
+	ItemCount: Gespeicherte Gegenstände: {0}
+}
+
+Configs: {
+	GraveyardStorageConfig: {
+		DisplayName: Friedhofspeicher-Einstellungen
+		Headers.ItemRestoration: Einstellungen zur Gegenstandswiederherstellung
+
+		PlacementMode: {
+			Label: Gegenstandsplatzierungsmodus
+			Tooltip:
+				'''
+				Steuert, wie Gegenstände in Ihrem Inventar platziert werden, wenn sie von einem Grabstein wiederhergestellt werden.
+				Diese Einstellung gilt nur, wenn Sie Ihre eigenen Gegenstände abholen.
+				Wenn ein anderer Spieler Ihre Gegenstände aufnimmt, wird immer "Kein Ersetzen" verwendet.
+				'''
+		}
+	}
+
+	ItemPlacementMode: {
+		Tooltip: ""
+
+		ReplaceStarred: {
+			Label: Favorisierte Gegenstände ersetzen
+			Tooltip: Nur favorisierte (markierte) Gegenstände ersetzen Gegenstände an ihren ursprünglichen Plätzen. Andere Gegenstände gehen in leere Plätze oder werden fallengelassen.
+		}
+
+		ReplaceAll: {
+			Label: Alle Gegenstände ersetzen
+			Tooltip: Alle Gegenstände versuchen, Gegenstände an ihren ursprünglichen Plätzen zu ersetzen. Verdrängte Gegenstände werden in leere Plätze verschoben oder fallengelassen.
+		}
+
+		NoReplacement: {
+			Label: Kein Ersetzen
+			Tooltip: Gegenstände gehen nur in leere Plätze oder werden fallengelassen. Keine Gegenstände werden von ihren aktuellen Positionen verdrängt.
+		}
+	}
+}

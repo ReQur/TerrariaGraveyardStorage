@@ -1,0 +1,46 @@
+Common: {
+	GravestoneName: 墓碑
+	ItemsStoredMessage: 已存储物品：{0}
+}
+
+UI: {
+	GetItemsButton: 获取物品
+	GetItemsHover: 将所有物品恢复到其原始物品栏位置
+	ItemCount: 已存储物品：{0}
+}
+
+Configs: {
+	GraveyardStorageConfig: {
+		DisplayName: 墓地存储设置
+		Headers.ItemRestoration: 物品恢复设置
+
+		PlacementMode: {
+			Label: 物品放置模式
+			Tooltip:
+				'''
+				控制从墓碑恢复物品时如何将物品放入您的物品栏。
+				此设置仅适用于您取回自己的物品时。
+				当其他玩家拾取您的物品时，始终使用"不替换"模式。
+				'''
+		}
+	}
+
+	ItemPlacementMode: {
+		Tooltip: ""
+
+		ReplaceStarred: {
+			Label: 替换收藏物品
+			Tooltip: 只有收藏（标星）的物品会替换其原始槽位中的物品。其他物品将放入空槽位或掉落。
+		}
+
+		ReplaceAll: {
+			Label: 替换所有物品
+			Tooltip: 所有物品都会尝试替换其原始槽位中的物品。被替换的物品将移至空槽位或掉落。
+		}
+
+		NoReplacement: {
+			Label: 不替换
+			Tooltip: 物品只会放入空槽位或掉落。不会有任何物品从其当前位置被替换。
+		}
+	}
+}

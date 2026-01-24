@@ -1,0 +1,46 @@
+Common: {
+	GravestoneName: Lápide
+	ItemsStoredMessage: Itens armazenados: {0}
+}
+
+UI: {
+	GetItemsButton: Pegar itens
+	GetItemsHover: Restaurar todos os itens para suas posições originais no inventário
+	ItemCount: Itens armazenados: {0}
+}
+
+Configs: {
+	GraveyardStorageConfig: {
+		DisplayName: Configurações do Graveyard Storage
+		Headers.ItemRestoration: Configurações de restauração de itens
+
+		PlacementMode: {
+			Label: Modo de colocação de itens
+			Tooltip:
+				'''
+				Controla como os itens são colocados no seu inventário quando restaurados de uma lápide.
+				Esta configuração só se aplica quando você recupera seus próprios itens.
+				Quando outro jogador pega seus itens, "Sem substituição" é sempre usado.
+				'''
+		}
+	}
+
+	ItemPlacementMode: {
+		Tooltip: ""
+
+		ReplaceStarred: {
+			Label: Substituir itens favoritos
+			Tooltip: Apenas itens favoritos (com estrela) substituirão itens em seus slots originais. Outros itens vão para slots vazios ou são dropados.
+		}
+
+		ReplaceAll: {
+			Label: Substituir todos os itens
+			Tooltip: Todos os itens tentarão substituir itens em seus slots originais. Itens deslocados são movidos para slots vazios ou dropados.
+		}
+
+		NoReplacement: {
+			Label: Sem substituição
+			Tooltip: Itens só vão para slots vazios ou são dropados. Nenhum item será deslocado de suas posições atuais.
+		}
+	}
+}

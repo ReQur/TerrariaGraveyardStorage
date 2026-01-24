@@ -1,0 +1,46 @@
+Common: {
+	GravestoneName: Lapide
+	ItemsStoredMessage: Oggetti conservati: {0}
+}
+
+UI: {
+	GetItemsButton: Prendi oggetti
+	GetItemsHover: Ripristina tutti gli oggetti nelle loro posizioni originali dell'inventario
+	ItemCount: Oggetti conservati: {0}
+}
+
+Configs: {
+	GraveyardStorageConfig: {
+		DisplayName: Impostazioni Graveyard Storage
+		Headers.ItemRestoration: Impostazioni ripristino oggetti
+
+		PlacementMode: {
+			Label: Modalità posizionamento oggetti
+			Tooltip:
+				'''
+				Controlla come gli oggetti vengono posizionati nell'inventario quando vengono ripristinati da una lapide.
+				Questa impostazione si applica solo quando recuperi i tuoi oggetti.
+				Quando un altro giocatore raccoglie i tuoi oggetti, viene sempre usata la modalità "Nessuna sostituzione".
+				'''
+		}
+	}
+
+	ItemPlacementMode: {
+		Tooltip: ""
+
+		ReplaceStarred: {
+			Label: Sostituisci oggetti preferiti
+			Tooltip: Solo gli oggetti preferiti (con stella) sostituiranno gli oggetti nelle loro posizioni originali. Gli altri oggetti vanno negli slot vuoti o vengono lasciati cadere.
+		}
+
+		ReplaceAll: {
+			Label: Sostituisci tutti gli oggetti
+			Tooltip: Tutti gli oggetti cercheranno di sostituire gli oggetti nelle loro posizioni originali. Gli oggetti spostati vengono messi negli slot vuoti o lasciati cadere.
+		}
+
+		NoReplacement: {
+			Label: Nessuna sostituzione
+			Tooltip: Gli oggetti vanno solo negli slot vuoti o vengono lasciati cadere. Nessun oggetto verrà spostato dalle sue posizioni attuali.
+		}
+	}
+}

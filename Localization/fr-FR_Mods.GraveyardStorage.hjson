@@ -1,0 +1,46 @@
+Common: {
+	GravestoneName: Pierre tombale
+	ItemsStoredMessage: Objets stockés: {0}
+}
+
+UI: {
+	GetItemsButton: Récupérer les objets
+	GetItemsHover: Restaurer tous les objets à leurs emplacements d'inventaire d'origine
+	ItemCount: Objets stockés: {0}
+}
+
+Configs: {
+	GraveyardStorageConfig: {
+		DisplayName: Paramètres Graveyard Storage
+		Headers.ItemRestoration: Paramètres de restauration des objets
+
+		PlacementMode: {
+			Label: Mode de placement des objets
+			Tooltip:
+				'''
+				Contrôle comment les objets sont placés dans votre inventaire lorsqu'ils sont restaurés depuis une pierre tombale.
+				Ce paramètre s'applique uniquement lorsque vous récupérez vos propres objets.
+				Lorsqu'un autre joueur récupère vos objets, le mode "Pas de remplacement" est toujours utilisé.
+				'''
+		}
+	}
+
+	ItemPlacementMode: {
+		Tooltip: ""
+
+		ReplaceStarred: {
+			Label: Remplacer les objets favoris
+			Tooltip: Seuls les objets favoris (étoilés) remplaceront les objets à leurs emplacements d'origine. Les autres objets vont dans des emplacements vides ou sont lâchés.
+		}
+
+		ReplaceAll: {
+			Label: Remplacer tous les objets
+			Tooltip: Tous les objets essaieront de remplacer les objets à leurs emplacements d'origine. Les objets déplacés sont mis dans des emplacements vides ou lâchés.
+		}
+
+		NoReplacement: {
+			Label: Pas de remplacement
+			Tooltip: Les objets vont uniquement dans des emplacements vides ou sont lâchés. Aucun objet ne sera déplacé de ses positions actuelles.
+		}
+	}
+}
