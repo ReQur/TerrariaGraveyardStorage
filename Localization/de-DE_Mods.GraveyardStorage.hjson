@@ -10,6 +10,33 @@ UI: {
 }
 
 Configs: {
+	GraveyardStorageServerConfig: {
+		DisplayName: Graveyard Storage Servereinstellungen
+		Headers.GravestoneSafety: Grabstein-Sicherheitseinstellungen
+
+		GuaranteeGravestonePlacement: {
+			Label: Grabstein-Platzierung garantieren
+			Tooltip:
+				'''
+				Wenn aktiviert, überlebt der Grabstein garantiert.
+				Die Mod platziert einen temporären Steinboden darunter, damit er immer einen Halt hat,
+				hebt ihn aus jeder Flüssigkeit heraus und umgibt ihn (falls er noch in einer Flüssigkeit ist) mit temporären Blasenblöcken.
+				Alle temporären Blöcke werden entfernt, sobald du deine Gegenstände abholst oder der Grabstein zerstört wird.
+				Nützlich, wenn du in oder nahe Lava stirbst. Standardmäßig aus.
+				'''
+		}
+
+		UseBubbleBlocksInLiquid: {
+			Label: Blasenblöcke in Flüssigkeit verwenden
+			Tooltip:
+				'''
+				Bei garantierter Platzierung jede Flüssigkeit, die den Grabstein noch berührt, mit temporären Blasenblöcken abschotten.
+				Blasenblöcke halten Lava und Wasser fern, während du weiterhin hindurchgehen kannst.
+				Deaktiviere dies, wenn du nur den Steinboden und das Umsetzen möchtest.
+				'''
+		}
+	}
+
 	GraveyardStorageConfig: {
 		DisplayName: Friedhofspeicher-Einstellungen
 		Headers.ItemRestoration: Einstellungen zur Gegenstandswiederherstellung

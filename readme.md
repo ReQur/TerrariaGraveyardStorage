@@ -20,9 +20,9 @@ When playing on Mediumcore or Hardcore difficulty, dying in Terraria means your 
 - **Slot Position Memory**: The mod remembers exactly where each item was (armor slots, accessory slots, inventory position, etc.)
 - **Difficulty-Aware**: Only works on Mediumcore and Hardcore difficulties
   - On Softcore/Journey mode, items don't drop anyway, so the mod doesn't interfere
-- **40 Item Slots**: Each gravestone can hold up to 40 items
 - **Secure Storage**: Items are safely stored in the gravestone until you retrieve them
 - **World Save Support**: Gravestone contents and slot positions persist when saving/loading the world
+- **Guaranteed Gravestone Placement** (optional): Prevents the gravestone from breaking on its own, especially when you die in or near lava (see Settings)
 
 ## What Gets Stored
 
@@ -37,7 +37,7 @@ The mod stores (in priority order):
 - Misc equipment (hook, mount, pet, light pet, minecart)
 - Misc dyes
 
-If you have more than 40 items when you die, excess items will drop normally on the ground.
+Every item is stored — the gravestone storage has no slot limit.
 
 ## Settings
 
@@ -54,6 +54,19 @@ Controls how items are placed in your inventory when restored from a tombstone:
 | **No Replacement** | Items only go to empty slots or are dropped. No items will be displaced from their current positions. |
 
 **Note**: When another player picks up items from your tombstone (multiplayer), "No Replacement" mode is always used regardless of their settings. This prevents your death from reorganizing another player's inventory.
+
+### Guaranteed Gravestone Placement (Server settings)
+
+By default the mod relies on Terraria's own gravestone, which can break on its own in some situations — most notably when you die in or near lava, where the gravestone may never appear and your items are lost.
+
+Enable **Guarantee Gravestone Placement** (off by default) to make the gravestone reliable:
+
+| Option | Description |
+|--------|-------------|
+| **Guarantee Gravestone Placement** | Places a temporary stone floor under the gravestone so it always has something to sit on, moves it up out of any liquid onto the nearest safe spot, and (if still in liquid) walls it off with bubble blocks. |
+| **Use Bubble Blocks In Liquid** (Default: on) | Whether to wall off nearby liquid with temporary, walk-through bubble blocks. Disable to keep only the stone floor + relocation behavior. |
+
+All temporary blocks are removed automatically once you retrieve your items or the gravestone is destroyed, and only tiles the mod itself placed are ever removed — your own builds are never touched. These are **server-side** settings (the server is authoritative over world tiles in multiplayer).
 
 ## How It Works
 
@@ -86,16 +99,16 @@ Controls how items are placed in your inventory when restored from a tombstone:
 | File | Purpose |
 |------|---------|
 | `GraveyardStorage.cs` | Main mod class |
-| `GraveyardStorageConfig.cs` | Mod configuration settings (item placement mode) |
+| `GraveyardStorageConfig.cs` | Mod configuration (client-side item placement mode + server-side gravestone safety) |
 | `GraveyardStoragePlayer.cs` | Handles death, saves items with slot positions and favorite status, transfers to gravestones |
 | `GraveyardStorageSystem.cs` | Read-only logic, hooks for blocking deposits |
-| `GravestoneChestSystem.cs` | Tracks gravestone-chest associations, slot data, owner tracking, item restoration, world save/load |
+| `GravestoneChestSystem.cs` | Tracks gravestone associations, slot data, temporary blocks, owner tracking, item restoration, world save/load |
+| `GravestoneReinforcer.cs` | Guaranteed placement: relocation, temporary stone floor and bubble walls, sign moving |
 | `GraveyardStorageUI.cs` | "Get Items" button UI in the gravestone chest interface |
 | `VanillaGravestoneGlobalTile.cs` | Adds right-click chest functionality to vanilla gravestones |
 
 ## Known Limitations
 
-- Maximum 40 items per gravestone (excess drops on ground)
 - Only works in single-player or as server (multiplayer client defers to server)
 
 ## License

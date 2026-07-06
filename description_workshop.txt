@@ -13,6 +13,14 @@ When playing on Mediumcore or Hardcore difficulty, dying in Terraria means your 
 - Stores All Items: Every item from your inventory is saved
 - Secure Storage: Items safely stored until you retrieve them
 - World Save Support: Gravestone contents persist when saving/loading the world
+- Guaranteed Placement (optional): Never lose your grave to lava or bad terrain
+
+[c/FFFF00:Guaranteed Gravestone Placement (optional, off by default):]
+Turn this on in the mod's server settings if your gravestone sometimes breaks on its own - especially when you die in or near lava. When enabled the mod:
+- Places a temporary stone floor under the gravestone so it always has something to sit on
+- Moves the gravestone up out of any liquid onto the nearest safe spot
+- Surrounds it with temporary bubble blocks if liquid is still nearby (you can walk through them)
+- Removes all temporary blocks again once you retrieve your items or break the gravestone
 
 [c/FFFF00:What Gets Stored (in priority order):]
 - Armor (head, body, legs)

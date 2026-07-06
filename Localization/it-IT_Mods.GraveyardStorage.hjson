@@ -10,6 +10,33 @@ UI: {
 }
 
 Configs: {
+	GraveyardStorageServerConfig: {
+		DisplayName: Impostazioni server di Graveyard Storage
+		Headers.GravestoneSafety: Impostazioni di sicurezza della lapide
+
+		GuaranteeGravestonePlacement: {
+			Label: Garantisci il posizionamento della lapide
+			Tooltip:
+				'''
+				Se attivo, è garantito che la lapide sopravviva.
+				La mod posiziona un pavimento di pietra temporaneo sotto di essa così ha sempre un appoggio,
+				la sposta fuori da eventuali liquidi e (se è ancora in un liquido) la circonda con blocchi bolla temporanei.
+				Tutti i blocchi temporanei vengono rimossi quando recuperi i tuoi oggetti o la lapide viene distrutta.
+				Utile quando muori nella lava o nelle vicinanze. Disattivato per impostazione predefinita.
+				'''
+		}
+
+		UseBubbleBlocksInLiquid: {
+			Label: Usa blocchi bolla nei liquidi
+			Tooltip:
+				'''
+				Durante il posizionamento garantito, isola con blocchi bolla temporanei ogni liquido che tocca ancora la lapide.
+				I blocchi bolla tengono fuori lava e acqua mentre puoi ancora attraversarli.
+				Disattiva questa opzione se vuoi solo il pavimento di pietra e lo spostamento.
+				'''
+		}
+	}
+
 	GraveyardStorageConfig: {
 		DisplayName: Impostazioni Graveyard Storage
 		Headers.ItemRestoration: Impostazioni ripristino oggetti

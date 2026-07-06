@@ -10,6 +10,33 @@ UI: {
 }
 
 Configs: {
+	GraveyardStorageServerConfig: {
+		DisplayName: Ustawienia serwera Graveyard Storage
+		Headers.GravestoneSafety: Ustawienia bezpieczeństwa nagrobka
+
+		GuaranteeGravestonePlacement: {
+			Label: Gwarantuj postawienie nagrobka
+			Tooltip:
+				'''
+				Po włączeniu nagrobek na pewno przetrwa.
+				Mod umieszcza pod nim tymczasową kamienną podłogę, aby zawsze miał na czym stać,
+				wynosi go z każdej cieczy i (jeśli nadal jest w cieczy) otacza go tymczasowymi blokami bąbelkowymi.
+				Wszystkie tymczasowe bloki są usuwane, gdy odbierzesz przedmioty lub nagrobek zostanie zniszczony.
+				Przydatne przy śmierci w lawie lub w jej pobliżu. Domyślnie wyłączone.
+				'''
+		}
+
+		UseBubbleBlocksInLiquid: {
+			Label: Używaj bloków bąbelkowych w cieczy
+			Tooltip:
+				'''
+				Przy gwarantowanym postawieniu odgrodź tymczasowymi blokami bąbelkowymi każdą ciecz wciąż dotykającą nagrobka.
+				Bloki bąbelkowe powstrzymują lawę i wodę, a Ty nadal możesz przez nie przechodzić.
+				Wyłącz to, jeśli chcesz tylko kamienną podłogę i przenoszenie.
+				'''
+		}
+	}
+
 	GraveyardStorageConfig: {
 		DisplayName: Ustawienia Graveyard Storage
 		Headers.ItemRestoration: Ustawienia przywracania przedmiotów

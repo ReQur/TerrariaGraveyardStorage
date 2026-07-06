@@ -84,3 +84,6 @@ $RECYCLE.BIN/
 
 # Cursor skills (project-specific user preferences)
 .cursor/skills/
+
+# Claude Code local settings (per-user; keep CLAUDE.md and .claude/skills/ tracked)
+.claude/settings.local.json

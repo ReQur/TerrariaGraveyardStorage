@@ -42,4 +42,34 @@ namespace GraveyardStorage
         [DrawTicks]
         public ItemPlacementMode PlacementMode { get; set; } = ItemPlacementMode.ReplaceStarred;
     }
+
+    /// <summary>
+    /// Server-side configuration for Graveyard Storage mod.
+    /// These options control how the world is modified when you die, so they must be authoritative on the server
+    /// in multiplayer (that is why they live in a separate ServerSide config instead of the client-side one above).
+    /// </summary>
+    public class GraveyardStorageServerConfig : ModConfig
+    {
+        public override ConfigScope Mode => ConfigScope.ServerSide;
+
+        public static GraveyardStorageServerConfig Instance => ModContent.GetInstance<GraveyardStorageServerConfig>();
+
+        [Header("GravestoneSafety")]
+
+        /// <summary>
+        /// When enabled, the mod guarantees the gravestone survives: it places a temporary stone floor under the
+        /// gravestone so it always has something to sit on, moves it up out of any liquid, and (if it is still in a
+        /// liquid) surrounds it with temporary bubble blocks. All temporary blocks are removed once the items are
+        /// retrieved or the gravestone is destroyed.
+        /// </summary>
+        [DefaultValue(false)]
+        public bool GuaranteeGravestonePlacement { get; set; } = false;
+
+        /// <summary>
+        /// When guaranteeing placement, wall off any liquid still touching the gravestone with temporary bubble
+        /// blocks. Disable this if you only want the stone floor / relocation behavior.
+        /// </summary>
+        [DefaultValue(true)]
+        public bool UseBubbleBlocksInLiquid { get; set; } = true;
+    }
 }

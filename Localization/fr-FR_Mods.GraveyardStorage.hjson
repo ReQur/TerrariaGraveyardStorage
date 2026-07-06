@@ -10,6 +10,33 @@ UI: {
 }
 
 Configs: {
+	GraveyardStorageServerConfig: {
+		DisplayName: Paramètres serveur de Graveyard Storage
+		Headers.GravestoneSafety: Paramètres de sécurité de la pierre tombale
+
+		GuaranteeGravestonePlacement: {
+			Label: Garantir le placement de la pierre tombale
+			Tooltip:
+				'''
+				Lorsque activé, la pierre tombale est garantie de survivre.
+				Le mod place un sol en pierre temporaire dessous pour qu'elle ait toujours un appui,
+				la remonte hors de tout liquide et (si elle est encore dans un liquide) l'entoure de blocs à bulles temporaires.
+				Tous les blocs temporaires sont retirés dès que vous récupérez vos objets ou que la pierre tombale est détruite.
+				Utile en cas de mort dans ou près de la lave. Désactivé par défaut.
+				'''
+		}
+
+		UseBubbleBlocksInLiquid: {
+			Label: Utiliser des blocs à bulles dans les liquides
+			Tooltip:
+				'''
+				Lors du placement garanti, isolez avec des blocs à bulles temporaires tout liquide touchant encore la pierre tombale.
+				Les blocs à bulles empêchent la lave et l'eau d'entrer tout en vous laissant les traverser.
+				Désactivez ceci si vous ne voulez que le sol en pierre et le déplacement.
+				'''
+		}
+	}
+
 	GraveyardStorageConfig: {
 		DisplayName: Paramètres Graveyard Storage
 		Headers.ItemRestoration: Paramètres de restauration des objets

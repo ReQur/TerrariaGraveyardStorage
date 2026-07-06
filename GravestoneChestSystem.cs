@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Xna.Framework;
@@ -8,6 +9,24 @@ using Terraria.ModLoader.IO;
 
 namespace GraveyardStorage
 {
+    /// <summary>
+    /// A temporary tile (stone floor or bubble wall) that the mod added to keep a gravestone safe.
+    /// Removed again once the gravestone's items are retrieved or the gravestone is destroyed.
+    /// </summary>
+    public class TempBlock
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public ushort Type { get; set; }
+
+        public TempBlock(int x, int y, ushort type)
+        {
+            X = x;
+            Y = y;
+            Type = type;
+        }
+    }
+
     /// <summary>
     /// Stores slot metadata for items in a gravestone storage (for restoration).
     /// </summary>
@@ -33,6 +52,13 @@ namespace GraveyardStorage
     {
         public List<Item> Items { get; private set; } = new List<Item>();
         public List<ChestSlotData> SlotData { get; private set; } = new List<ChestSlotData>();
+
+        /// <summary>
+        /// Temporary tiles the mod placed to keep this gravestone safe (stone floor + bubble walls).
+        /// Empty unless the "Guarantee Gravestone Placement" option was active when the player died.
+        /// </summary>
+        public List<TempBlock> TempBlocks { get; private set; } = new List<TempBlock>();
+
         public string OwnerName { get; set; } = "";
         public int TileX { get; set; }
         public int TileY { get; set; }
@@ -125,6 +151,23 @@ namespace GraveyardStorage
                     itemTags.Add(itemTag);
                 }
                 storageTag["items"] = itemTags;
+
+                // Save temporary blocks (stone floor / bubble walls) so they can be cleaned up after a reload.
+                if (storage.TempBlocks.Count > 0)
+                {
+                    var tempTags = new List<TagCompound>();
+                    foreach (var tb in storage.TempBlocks)
+                    {
+                        tempTags.Add(new TagCompound
+                        {
+                            ["x"] = tb.X,
+                            ["y"] = tb.Y,
+                            ["type"] = (int)tb.Type
+                        });
+                    }
+                    storageTag["tempBlocks"] = tempTags;
+                }
+
                 storageList.Add(storageTag);
             }
 
@@ -166,6 +209,18 @@ namespace GraveyardStorage
 
                         storage.Items.Add(item);
                         storage.SlotData.Add(slotData);
+                    }
+
+                    // Load temporary blocks (guarded for worlds saved before this feature existed).
+                    if (storageTag.ContainsKey("tempBlocks"))
+                    {
+                        foreach (var tempTag in storageTag.GetList<TagCompound>("tempBlocks"))
+                        {
+                            storage.TempBlocks.Add(new TempBlock(
+                                tempTag.GetInt("x"),
+                                tempTag.GetInt("y"),
+                                (ushort)tempTag.GetInt("type")));
+                        }
                     }
 
                     if (storage.Items.Count > 0)
@@ -258,6 +313,9 @@ namespace GraveyardStorage
             
             if (GravestoneStorages.TryGetValue(origin, out GravestoneStorage storage))
             {
+                ModContent.GetInstance<GraveyardStorage>().Logger.Debug(
+                    $"[GraveyardStorage] Gravestone with storage killed at {origin}; items={storage.Items.Count}, tempBlocks={storage.TempBlocks.Count}, netMode={Main.netMode}");
+
                 if (storage.Items.Count > 0)
                 {
                     // Find the player who is breaking this tile
@@ -342,7 +400,79 @@ namespace GraveyardStorage
                     }
                 }
             }
+            RemoveTempBlocks(storage);
             storage.Clear();
+        }
+
+        /// <summary>
+        /// Removes any temporary blocks (stone floor / bubble walls) the mod placed to keep this gravestone safe.
+        /// Only tiles that still match the type we placed are removed, so player-built blocks are never touched.
+        /// </summary>
+        public static void RemoveTempBlocks(GravestoneStorage storage)
+        {
+            if (storage == null || storage.TempBlocks.Count == 0)
+                return;
+
+            foreach (var tb in storage.TempBlocks)
+            {
+                if (tb.X < 0 || tb.X >= Main.maxTilesX || tb.Y < 0 || tb.Y >= Main.maxTilesY)
+                    continue;
+
+                Tile t = Main.tile[tb.X, tb.Y];
+                if (!t.HasTile || t.TileType != tb.Type)
+                    continue; // player changed this tile - leave it alone
+
+                // Clear the tile directly. We intentionally do NOT call WorldGen.SquareTileFrame here: reframing the
+                // stone floor would re-run the gravestone's support check and could synchronously KillTile it,
+                // re-entering OnGravestoneKilled while this storage is still processing. SendTileSquare reframes on
+                // clients; in single player the neighbor sprites resolve on the next natural tile update.
+                t.HasTile = false;
+                t.TileFrameX = 0;
+                t.TileFrameY = 0;
+
+                if (Main.netMode != NetmodeID.SinglePlayer)
+                    NetMessage.SendTileSquare(-1, tb.X, tb.Y, 1, 1);
+            }
+
+            storage.TempBlocks.Clear();
+        }
+
+        /// <summary>
+        /// Clears the 2x2 tombstone tiles (and its sign) at the given origin without dropping a tombstone item.
+        /// Used after item retrieval to remove a gravestone that was only standing on temporary support.
+        /// </summary>
+        private static void ClearGravestoneAt(Point origin)
+        {
+            for (int dx = 0; dx <= 1; dx++)
+            {
+                for (int dy = 0; dy <= 1; dy++)
+                {
+                    int tx = origin.X + dx;
+                    int ty = origin.Y + dy;
+                    if (tx < 0 || tx >= Main.maxTilesX || ty < 0 || ty >= Main.maxTilesY)
+                        continue;
+
+                    Tile t = Main.tile[tx, ty];
+                    if (t.HasTile && t.TileType == TileID.Tombstones)
+                    {
+                        t.HasTile = false;
+                        t.TileFrameX = 0;
+                        t.TileFrameY = 0;
+                    }
+                }
+            }
+
+            for (int i = 0; i < Main.sign.Length; i++)
+            {
+                if (Main.sign[i] != null && Main.sign[i].x == origin.X && Main.sign[i].y == origin.Y)
+                {
+                    Main.sign[i] = null;
+                    break;
+                }
+            }
+
+            if (Main.netMode != NetmodeID.SinglePlayer)
+                NetMessage.SendTileSquare(-1, origin.X, origin.Y, 2, 2);
         }
 
         /// <summary>
@@ -489,7 +619,13 @@ namespace GraveyardStorage
                 }
             }
 
-            // Clean up: remove the gravestone storage since items are now retrieved
+            // Clean up: remove temporary blocks and the gravestone storage since items are now retrieved.
+            // If the gravestone was standing on our temporary support, remove the (now empty) gravestone too so it
+            // doesn't hang in the air after the support is gone.
+            bool hadTempBlocks = storage.TempBlocks.Count > 0;
+            RemoveTempBlocks(storage);
+            if (!isDestroying && hadTempBlocks)
+                ClearGravestoneAt(origin);
             storage.Clear();
             GravestoneStorages.Remove(origin);
         }

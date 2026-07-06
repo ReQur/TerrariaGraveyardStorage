@@ -10,6 +10,33 @@ UI: {
 }
 
 Configs: {
+	GraveyardStorageServerConfig: {
+		DisplayName: Graveyard Storage Server Settings
+		Headers.GravestoneSafety: Gravestone Safety Settings
+
+		GuaranteeGravestonePlacement: {
+			Label: Guarantee Gravestone Placement
+			Tooltip:
+				'''
+				When enabled, the gravestone is guaranteed to survive.
+				The mod places a temporary stone floor under it so it always has something to sit on,
+				moves it up out of any liquid, and (if still in a liquid) surrounds it with temporary bubble blocks.
+				All temporary blocks are removed once you retrieve your items or the gravestone is destroyed.
+				Useful when dying in or near lava. Off by default.
+				'''
+		}
+
+		UseBubbleBlocksInLiquid: {
+			Label: Use Bubble Blocks In Liquid
+			Tooltip:
+				'''
+				When guaranteeing placement, wall off any liquid still touching the gravestone with temporary bubble blocks.
+				Bubble blocks keep lava and water out while you can still walk through them.
+				Disable this if you only want the stone floor and relocation behavior.
+				'''
+		}
+	}
+
 	GraveyardStorageConfig: {
 		DisplayName: Graveyard Storage Settings
 		Headers.ItemRestoration: Item Restoration Settings

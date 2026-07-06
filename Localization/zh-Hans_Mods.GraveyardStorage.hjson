@@ -10,6 +10,33 @@ UI: {
 }
 
 Configs: {
+	GraveyardStorageServerConfig: {
+		DisplayName: Graveyard Storage 服务器设置
+		Headers.GravestoneSafety: 墓碑安全设置
+
+		GuaranteeGravestonePlacement: {
+			Label: 保证墓碑放置
+			Tooltip:
+				'''
+				启用后，墓碑必定会保留下来。
+				模组会在其下方放置临时石块地板，让它始终有依托，
+				将它抬升到液体之外，若仍在液体中，则用临时气泡块将其围住。
+				当你取回物品或墓碑被摧毁后，所有临时方块都会被移除。
+				在熔岩中或附近死亡时很有用。默认关闭。
+				'''
+		}
+
+		UseBubbleBlocksInLiquid: {
+			Label: 在液体中使用气泡块
+			Tooltip:
+				'''
+				保证放置时，用临时气泡块将仍接触墓碑的液体隔开。
+				气泡块能挡住熔岩和水，同时你仍可穿过它们。
+				如果只想要石块地板和搬移功能，请关闭此项。
+				'''
+		}
+	}
+
 	GraveyardStorageConfig: {
 		DisplayName: 墓地存储设置
 		Headers.ItemRestoration: 物品恢复设置
